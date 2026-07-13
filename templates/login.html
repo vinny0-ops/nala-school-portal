@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nala School Portal — Sign In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="app">
+  <div class="login-screen" style="display:flex;">
+    <div class="login-wrap">
+      <div class="badge-row">
+        <div class="badge">N</div>
+        <div><h1>Nala School Portal</h1><p>School Management System</p></div>
+      </div>
+      <div class="card">
+        <div class="role-toggle">
+          <a href="{{ url_for('login', role='student') }}" class="{{ 'active' if role=='student' }}" style="text-decoration:none; display:flex; align-items:center; justify-content:center;">Student</a>
+          <a href="{{ url_for('login', role='teacher') }}" class="{{ 'active' if role=='teacher' }}" style="text-decoration:none; display:flex; align-items:center; justify-content:center;">Teacher</a>
+          <a href="{{ url_for('login', role='admin') }}" class="{{ 'active' if role=='admin' or not role }}" style="text-decoration:none; display:flex; align-items:center; justify-content:center;">Admin</a>
+        </div>
+
+        {% if role == 'student' %}
+          <h2>Student Sign In</h2>
+          <p class="sub">Enter your student ID and password to view your results.</p>
+        {% elif role == 'teacher' %}
+          <h2>Teacher Sign In</h2>
+          <p class="sub">Enter your staff ID and password to manage your subject.</p>
+        {% else %}
+          <h2>Admin Sign In</h2>
+          <p class="sub">Enter your admin ID and password for the school dashboard.</p>
+        {% endif %}
+
+        {% if error %}<div class="error" style="display:block;">{{ error }}</div>{% endif %}
+
+        <form method="POST" action="{{ url_for('login') }}">
+          <input type="hidden" name="role" value="{{ role }}">
+          <div class="field">
+            <label>{{ 'Student ID' if role=='student' else ('Staff ID' if role=='teacher' else 'Admin ID') }}</label>
+            <input type="text" name="id" placeholder="e.g. {{ 'MW-2041' if role=='student' else ('TCH-001' if role=='teacher' else 'ADM-001') }}" autocomplete="off" required>
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" name="password" placeholder="••••••••" autocomplete="off" required>
+          </div>
+          <button class="btn" type="submit">Sign In</button>
+        </form>
+
+        <div class="demo-hint">
+          {% if role == 'student' %}
+            Don't have login details? Ask your school admin — they add student accounts through the portal.
+          {% elif role == 'teacher' %}
+            Don't have login details? Ask your school admin to add you as a teacher.
+          {% else %}
+            First time here? Use <b>ADM-001</b> / <b>admin123</b>, then change the password immediately under Manage Staff.
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

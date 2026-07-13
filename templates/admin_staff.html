@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Manage Staff — Nala School Portal{% endblock %}
+{% block tabs %}{% include "_admin_tabs.html" %}{% endblock %}
+{% block content %}
+<div class="panel-card">
+  <h3>Add a Teacher</h3>
+  <form method="POST" action="{{ url_for('admin_add_teacher') }}">
+    <div class="grid-2">
+      <div class="field"><label>Staff ID</label><input type="text" name="id" placeholder="e.g. TCH-003"></div>
+      <div class="field"><label>Password</label><input type="text" name="password" placeholder="Temporary password"></div>
+    </div>
+    <div class="field"><label>Full Name</label><input type="text" name="name" placeholder="e.g. Mr. John Mushi"></div>
+    <label>Subjects Taught (select all that apply)</label>
+    <div class="checkbox-grid">
+      {% for s in subjects %}<label class="checkbox-item"><input type="checkbox" name="subjects" value="{{ s.id }}"> {{ s.name }}</label>{% endfor %}
+    </div>
+    <button class="btn-sm btn-gold" type="submit">Add Teacher</button>
+  </form>
+</div>
+
+<div class="panel-card">
+  <h3>Current Teachers &amp; Subject Performance</h3>
+  <p class="note">Average scores shown are for the Terminal/Annual exam across all classes for each subject the teacher is assigned to — a rough snapshot, since multiple teachers can share the same subject.</p>
+  {% for tr in teacher_rows %}
+  <div class="parent-list-row" style="flex-direction:column; align-items:stretch;">
+    <div style="display:flex; justify-content:space-between; align-items:center; width:100%; flex-wrap:wrap; gap:8px;">
+      <div><div class="pname">{{ tr.teacher.name }}</div><div class="pid">{{ tr.teacher.id }} · {{ tr.subjects|map(attribute='name')|join(', ') or 'No subject assigned' }}</div></div>
+      <div class="row-actions">
+        <button class="btn-sm btn-outline" type="button" onclick="var f=document.getElementById('pw-t-{{ tr.teacher.id }}'); f.style.display = f.style.display==='none'?'inline-block':'none';">Reset PW</button>
+        <form method="POST" action="{{ url_for('admin_staff_delete', kind='teacher', sid=tr.teacher.id) }}" onsubmit="return confirm('Remove {{ tr.teacher.name }}?');" style="display:inline;">
+          <button class="btn-sm btn-danger" type="submit">Remove</button>
+        </form>
+      </div>
+    </div>
+    <form id="pw-t-{{ tr.teacher.id }}" method="POST" action="{{ url_for('admin_staff_reset_pw', kind='teacher', sid=tr.teacher.id) }}" style="display:none; margin-top:6px;">
+      <input type="text" name="password" placeholder="New password" style="width:160px; display:inline-block;">
+      <button class="btn-sm" type="submit">Set</button>
+    </form>
+    {% if tr.perf %}
+    <div style="margin-top:10px; width:100%;">
+      {% for p in tr.perf %}
+      <div class="bar-row"><div class="bar-label">{{ p.name }}</div><div class="bar-track"><div class="bar-fill" style="width:{{ p.avg or 0 }}%"></div></div><div class="bar-value">{{ '%.0f%%'|format(p.avg) if p.avg is not none else '—' }}</div></div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+  <p class="note">No teachers added yet.</p>
+  {% endfor %}
+</div>
+
+<div class="panel-card">
+  <h3>Add an Admin</h3>
+  <form method="POST" action="{{ url_for('admin_add_admin') }}">
+    <div class="grid-2">
+      <div class="field"><label>Admin ID</label><input type="text" name="id" placeholder="e.g. ADM-002"></div>
+      <div class="field"><label>Password</label><input type="text" name="password" placeholder="Temporary password"></div>
+    </div>
+    <div class="field"><label>Full Name</label><input type="text" name="name" placeholder="e.g. Mrs. Grace Kileo"></div>
+    <button class="btn-sm btn-gold" type="submit">Add Admin</button>
+  </form>
+</div>
+
+<div class="panel-card">
+  <h3>Current Admins</h3>
+  {% for a in admins %}
+  <div class="parent-list-row">
+    <div><div class="pname">{{ a.name }}</div><div class="pid">{{ a.id }}</div></div>
+    <div class="row-actions">
+      <button class="btn-sm btn-outline" type="button" onclick="var f=document.getElementById('pw-a-{{ a.id }}'); f.style.display = f.style.display==='none'?'inline-block':'none';">Reset PW</button>
+      <form method="POST" action="{{ url_for('admin_staff_delete', kind='admin', sid=a.id) }}" onsubmit="return confirm('Remove {{ a.name }}?');" style="display:inline;">
+        <button class="btn-sm btn-danger" type="submit">Remove</button>
+      </form>
+    </div>
+    <form id="pw-a-{{ a.id }}" method="POST" action="{{ url_for('admin_staff_reset_pw', kind='admin', sid=a.id) }}" style="display:none; margin-top:6px;">
+      <input type="text" name="password" placeholder="New password" style="width:160px; display:inline-block;">
+      <button class="btn-sm" type="submit">Set</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="note">No admins added yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

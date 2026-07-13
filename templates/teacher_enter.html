@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Enter Results — Nala School Portal{% endblock %}
+{% block tabs %}{% include "_teacher_tabs.html" %}{% endblock %}
+{% block content %}
+<form method="GET" id="controlsForm">
+<div class="controls-row">
+  <div class="control">
+    <label>Class</label>
+    <select name="form" onchange="document.getElementById('controlsForm').submit()">
+      {% for f in forms %}<option value="{{ f.name }}" {{ 'selected' if f.name==form }}>Form {{ f.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="control">
+    <label>Exam Type</label>
+    <select name="exam" onchange="document.getElementById('controlsForm').submit()">
+      {% for e in exam_types %}<option value="{{ e }}" {{ 'selected' if e==exam }}>{{ e }}</option>{% endfor %}
+    </select>
+  </div>
+  {% if subs|length > 1 %}
+  <div class="control">
+    <label>Subject</label>
+    <select name="subject" onchange="document.getElementById('controlsForm').submit()">
+      {% for s in subs %}<option value="{{ s.id }}" {{ 'selected' if s.id==subject_id }}>{{ s.name }}</option>{% endfor %}
+    </select>
+  </div>
+  {% endif %}
+</div>
+</form>
+
+{% if not subs %}
+<div class="panel-card"><p class="note">You haven't been assigned any subjects yet — ask your admin to assign you one under Manage Staff.</p></div>
+{% else %}
+<form method="POST">
+  <input type="hidden" name="form" value="{{ form }}">
+  <input type="hidden" name="exam" value="{{ exam }}">
+  <input type="hidden" name="subject" value="{{ subject_id }}">
+  <div class="panel-card">
+    <h3>Enter Results — {{ subs|selectattr('id','equalto',subject_id)|map(attribute='name')|first }} · Form {{ form }} · {{ exam }}</h3>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Student</th><th>ID</th><th>Stream</th><th class="num">Score</th></tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td>{{ r.name }}</td><td class="mono" style="font-size:12px;color:#6b6b5e">{{ r.id }}</td><td style="font-size:12px">{{ r.stream }}</td>
+          <td class="num"><input type="text" inputmode="numeric" class="score-input" name="score_{{ r.id }}" value="{{ r.score }}"></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" style="text-align:center;color:#8a8a78;padding:16px 0;">No students in Form {{ form }} yet. Ask your admin to register students.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <button class="btn-sm" style="margin-top:16px" type="submit">Save Results</button>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

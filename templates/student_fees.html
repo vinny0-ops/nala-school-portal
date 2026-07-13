@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}My Fees — Nala School Portal{% endblock %}
+{% block tabs %}{% include "_student_tabs.html" %}{% endblock %}
+{% block content %}
+<div class="grid-3">
+  <div class="stat"><div class="k">Term Fee Due</div><div class="v">{{ due|tzs }}</div></div>
+  <div class="stat"><div class="k">Total Paid</div><div class="v">{{ paid|tzs }}</div></div>
+  <div class="stat"><div class="k">Balance</div><div class="v" style="font-size:18px">{{ balance|tzs }}
+    {% if due==0 %}<span class="fee-pill" style="background:#999">No fee set</span>
+    {% elif balance<=0 %}<span class="fee-pill fee-paid">Paid in full</span>
+    {% elif paid>0 %}<span class="fee-pill fee-partial">Partial</span>
+    {% else %}<span class="fee-pill fee-unpaid">Unpaid</span>{% endif %}
+  </div></div>
+</div>
+<div class="panel-card">
+  <h3>Payment History</h3>
+  <div class="table-scroll">
+  <table>
+    <thead><tr><th>Date</th><th class="num">Amount</th><th>Category</th><th>Note</th></tr></thead>
+    <tbody>
+      {% for p in payments %}
+      <tr><td>{{ p.date }}</td><td class="num mono">{{ p.amount|tzs }}</td><td>{{ p.category }}</td><td>{{ p.note }}</td></tr>
+      {% else %}
+      <tr><td colspan="4" style="text-align:center;color:#8a8a78;padding:14px 0;">No payments recorded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Class Analysis — Nala School Portal{% endblock %}
+{% block tabs %}{% include "_teacher_tabs.html" %}{% endblock %}
+{% block content %}
+<form method="GET" id="controlsForm">
+<div class="controls-row">
+  <div class="control">
+    <label>Class</label>
+    <select name="form" onchange="document.getElementById('controlsForm').submit()">
+      {% for f in forms %}<option value="{{ f.name }}" {{ 'selected' if f.name==form }}>Form {{ f.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="control">
+    <label>Exam Type</label>
+    <select name="exam" onchange="document.getElementById('controlsForm').submit()">
+      {% for e in exam_types %}<option value="{{ e }}" {{ 'selected' if e==exam }}>{{ e }}</option>{% endfor %}
+    </select>
+  </div>
+  {% if subs|length > 1 %}
+  <div class="control">
+    <label>Subject</label>
+    <select name="subject" onchange="document.getElementById('controlsForm').submit()">
+      {% for s in subs %}<option value="{{ s.id }}" {{ 'selected' if s.id==subject_id }}>{{ s.name }}</option>{% endfor %}
+    </select>
+  </div>
+  {% endif %}
+</div>
+</form>
+
+{% if count == 0 %}
+<div class="panel-card"><p style="font-size:13px;color:#6b6b5e">No students in Form {{ form }} yet.</p></div>
+{% else %}
+<div class="grid-3">
+  <div class="stat"><div class="k">Class Average — {{ subj_name }}</div><div class="v">{{ '%.1f'|format(avg) }}<span>%</span></div></div>
+  <div class="stat"><div class="k">Pass Rate (NECTA ≥30)</div><div class="v">{{ '%.0f'|format(pass_rate) }}<span>%</span></div></div>
+  <div class="stat"><div class="k">Students Assessed</div><div class="v">{{ count }}</div></div>
+</div>
+<div class="panel-card">
+  <h3>Grade Distribution</h3>
+  {% set colors = {'A':'#3A6B62','B':'#5c8a68','C':'#C9A227','D':'#c17a3f','F':'#7A2E2E'} %}
+  {% for letter, cnt in dist.items() %}
+  <div class="bar-row"><div class="bar-label">Grade {{ letter }}</div>
+    <div class="bar-track"><div class="bar-fill" style="width:{{ (cnt/count*100) if count else 0 }}%; background:{{ colors[letter] }}"></div></div>
+    <div class="bar-value">{{ cnt }}</div></div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

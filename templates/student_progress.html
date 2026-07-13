@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}My Progress — Nala School Portal{% endblock %}
+{% block tabs %}{% include "_student_tabs.html" %}{% endblock %}
+{% block content %}
+<div class="controls-row">
+  <div class="control">
+    <label>Subject</label>
+    <select onchange="location.href='{{ url_for('student_progress') }}?subject='+this.value">
+      <option value="overall" {{ 'selected' if subject_idx=='overall' }}>Overall Average</option>
+      {% for s in subjects %}<option value="{{ s.id }}" {{ 'selected' if subject_idx==s.id|string }}>{{ s.name }}</option>{% endfor %}
+    </select>
+  </div>
+</div>
+<div class="panel-card">
+  <h3>Progress Across This Term's Exams</h3>
+  <p class="note">Shows how scores moved across Test 1 → Test 2 → Midterm → Terminal/Annual for the current term. This does not yet track progress across different terms or years.</p>
+  <div class="chart-wrap"><canvas id="progressChart"></canvas></div>
+</div>
+<script>
+new Chart(document.getElementById('progressChart'), {
+  type: 'line',
+  data: { labels: {{ labels|tojson }}, datasets: [{ label: {{ series_label|tojson }},
+    data: {{ data|tojson }}, borderColor:'#3A6B62', backgroundColor:'rgba(58,107,98,0.15)', tension:0.3, fill:true, pointRadius:4 }] },
+  options: { scales:{ y:{ min:0, max:100 } }, plugins:{ legend:{ display:false } } }
+});
+</script>
+{% endblock %}

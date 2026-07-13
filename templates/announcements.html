@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Announcements — Nala School Portal{% endblock %}
+{% block tabs %}
+  {% if current_user.role == 'student' %}{% include "_student_tabs.html" %}
+  {% elif current_user.role == 'teacher' %}{% include "_teacher_tabs.html" %}
+  {% else %}{% include "_admin_tabs.html" %}{% endif %}
+{% endblock %}
+{% block content %}
+{% if can_post %}
+<div class="panel-card ann-form">
+  <h3>Post an Announcement</h3>
+  <form method="POST">
+    <input type="text" name="title" placeholder="Title" required>
+    <textarea name="body" placeholder="Write your announcement..." required></textarea>
+    <button class="btn-sm" type="submit">Post Announcement</button>
+  </form>
+</div>
+{% endif %}
+<div class="panel-card">
+  <h3>School Announcements</h3>
+  {% for a in items %}
+  <div class="announcement">
+    <h4>{{ a.title }}</h4>
+    <div class="meta">{{ a.author }} · {{ a.date }}</div>
+    <p>{{ a.body }}</p>
+    {% if can_delete %}
+    <form method="POST" action="{{ url_for('admin_announcement_delete', aid=a.id) }}" style="margin-top:8px;">
+      <button class="btn-sm btn-danger" type="submit">Delete</button>
+    </form>
+    {% endif %}
+  </div>
+  {% else %}
+  <p style="font-size:13px;color:#6b6b5e">No announcements yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

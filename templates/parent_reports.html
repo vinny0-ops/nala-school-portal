@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Parent Reports — Nala School Portal{% endblock %}
+{% block tabs %}{% include "_teacher_tabs.html" %}{% endblock %}
+{% block content %}
+<form method="GET" id="controlsForm">
+<div class="controls-row">
+  <div class="control">
+    <label>Class</label>
+    <select name="form" onchange="document.getElementById('controlsForm').submit()">
+      {% for f in forms %}<option value="{{ f.name }}" {{ 'selected' if f.name==form }}>Form {{ f.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="control">
+    <label>Exam Type</label>
+    <select name="exam" onchange="document.getElementById('controlsForm').submit()">
+      {% for e in exam_types %}<option value="{{ e }}" {{ 'selected' if e==exam }}>{{ e }}</option>{% endfor %}
+    </select>
+  </div>
+</div>
+</form>
+<div class="panel-card">
+  <h3>Parent Reports — Form {{ form }} · {{ exam }}</h3>
+  <p class="note">Generates an individual, printable report card for a parent or guardian, including subject scores, subject position, average, GPA, division and class rank.</p>
+  {% for s in students %}
+  <div class="parent-list-row">
+    <div><div class="pname">{{ s.name }}</div><div class="pid">{{ s.id }} · Form {{ s.form }} — {{ s.stream }}</div></div>
+    <a class="btn-sm btn-outline" style="text-decoration:none;" href="{{ url_for('parent_report_pdf', sid=s.id, exam=exam) }}">Download Report</a>
+  </div>
+  {% else %}
+  <p style="font-size:13px;color:#6b6b5e">No students in Form {{ form }} yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

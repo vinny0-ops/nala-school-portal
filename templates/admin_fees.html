@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Fees — Nala School Portal{% endblock %}
+{% block tabs %}{% include "_admin_tabs.html" %}{% endblock %}
+{% block content %}
+<div class="controls-row">
+  <div class="control">
+    <label>Class</label>
+    <form method="GET" id="formFilterForm">
+      <select name="form" onchange="document.getElementById('formFilterForm').submit()">
+        <option value="All" {{ 'selected' if form=='All' }}>All Forms</option>
+        {% for f in forms %}<option value="{{ f.name }}" {{ 'selected' if form==f.name }}>Form {{ f.name }}</option>{% endfor %}
+      </select>
+    </form>
+  </div>
+</div>
+
+<div class="panel-card">
+  <h3>Term Fee Structure</h3>
+  <p class="note">Set the standard per-term fee for each class. Individual students can be given a custom amount below if needed (e.g. bursaries).</p>
+  <form method="POST" action="{{ url_for('admin_fees_structure') }}">
+    <div class="grid-2">
+      {% for f in forms %}
+      <div class="field"><label>Form {{ f.name }} — Term Fee (TZS)</label><input type="number" name="fee_{{ f.name }}" value="{{ fee_structure.get(f.name, 0) }}"></div>
+      {% endfor %}
+    </div>
+    <button class="btn-sm btn-gold" type="submit">Save Fee Structure</button>
+  </form>
+</div>
+
+<div class="grid-3">
+  <div class="stat"><div class="k">Total Due (this view)</div><div class="v" style="font-size:18px">{{ total_due|tzs }}</div></div>
+  <div class="stat"><div class="k">Total Collected</div><div class="v" style="font-size:18px">{{ total_paid|tzs }}</div></div>
+  <div class="stat"><div class="k">Outstanding</div><div class="v" style="font-size:18px">{{ ((total_due-total_paid) if total_due > total_paid else 0)|tzs }}</div></div>
+</div>
+
+<div class="panel-card">
+  <h3>Student Fee Status</h3>
+  <div class="table-scroll">
+  <table>
+    <thead><tr><th>Student</th><th>ID</th><th>Class</th><th class="num">Due</th><th class="num">Paid</th><th class="num">Balance</th><th class="num">Status</th><th class="num">Actions</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td>{{ r.student.name }}</td>
+        <td class="mono" style="font-size:12px">{{ r.student.id }}</td>
+        <td style="font-size:12.5px">Form {{ r.student.form }}</td>
+        <td class="num mono">{{ r.due|tzs }}</td>
+        <td class="num mono">{{ r.paid|tzs }}</td>
+        <td class="num mono">{{ r.balance|tzs }}</td>
+        <td class="num">
+          {% if r.due == 0 %}<span class="fee-pill" style="background:#999">No fee set</span>
+          {% elif r.balance <= 0 %}<span class="fee-pill fee-paid">Paid in full</span>
+          {% elif r.paid > 0 %}<span class="fee-pill fee-partial">Partial</span>
+          {% else %}<span class="fee-pill fee-unpaid">Unpaid</span>{% endif %}
+        </td>
+        <td class="num">
+          <div class="row-actions">
+            <button class="btn-sm" type="button" onclick="var f=document.getElementById('pay-{{ r.student.id }}'); f.style.display = f.style.display==='none'?'block':'none';">Record Payment</button>
+            <button class="btn-sm btn-outline" type="button" onclick="var f=document.getElementById('due-{{ r.student.id }}'); f.style.display = f.style.display==='none'?'block':'none';">Custom Due</button>
+            {% if r.balance > 0 %}<a class="btn-sm btn-outline" href="{{ url_for('reminder_pdf', sid=r.student.id) }}">Reminder Letter</a>{% endif %}
+          </div>
+          <form id="pay-{{ r.student.id }}" method="POST" action="{{ url_for('admin_record_payment', sid=r.student.id) }}" style="display:none; margin-top:8px; text-align:left;">
+            <div class="field"><label>Amount (TZS)</label><input type="number" name="amount" required></div>
+            <div class="field"><label>Category</label>
+              <select name="category">
+                <option>Tuition</option><option>Exam Fee</option><option>Uniform</option><option>Boarding</option><option>General</option>
+              </select>
+            </div>
+            <div class="field"><label>Note (optional)</label><input type="text" name="note"></div>
+            <button class="btn-sm btn-gold" type="submit">Save Payment</button>
+          </form>
+          <form id="due-{{ r.student.id }}" method="POST" action="{{ url_for('admin_custom_due', sid=r.student.id) }}" style="display:none; margin-top:8px; text-align:left;">
+            <div class="field"><label>Custom Due (blank = use Form {{ r.student.form }} standard fee)</label><input type="number" name="amount" placeholder="e.g. 250000"></div>
+            <button class="btn-sm" type="submit">Save</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" style="text-align:center;color:#8a8a78;padding:16px 0;">No students in this selection.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

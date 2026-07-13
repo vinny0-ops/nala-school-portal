@@ -1,0 +1,4 @@
+<a class="tab {{ 'active' if request.endpoint=='student_results' }}" href="{{ url_for('student_results') }}">My Results</a>
+<a class="tab {{ 'active' if request.endpoint=='student_progress' }}" href="{{ url_for('student_progress') }}">My Progress</a>
+<a class="tab {{ 'active' if request.endpoint=='student_fees' }}" href="{{ url_for('student_fees') }}">My Fees</a>
+<a class="tab {{ 'active' if request.endpoint=='student_announcements' }}" href="{{ url_for('student_announcements') }}">Announcements</a>

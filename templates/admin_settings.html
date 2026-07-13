@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Settings — Nala School Portal{% endblock %}
+{% block tabs %}{% include "_admin_tabs.html" %}{% endblock %}
+{% block content %}
+<div class="panel-card">
+  <h3>Data Backup</h3>
+  <p class="note">Everything lives in a real SQLite database file on the server (school.db, currently {{ (db_size/1024)|round(1) }} KB). Download it for offline backups, or restore from a previous backup.</p>
+  <div class="pdf-actions" style="margin-top:0;">
+    <a class="btn-sm btn-outline" href="{{ url_for('admin_backup_db') }}">Download Backup (.db)</a>
+    <form method="POST" action="{{ url_for('admin_restore_db') }}" enctype="multipart/form-data" style="display:inline-flex; align-items:center; gap:8px;">
+      <input type="file" name="backup_file" accept=".db" required>
+      <button class="btn-sm btn-outline" type="submit" onclick="return confirm('This replaces ALL current data with the uploaded backup. Continue?');">Restore</button>
+    </form>
+  </div>
+</div>
+
+<div class="panel-card">
+  <h3>Activity Log</h3>
+  <p class="note">Most recent 50 actions across the portal — score entries, payments, staff/student changes, curriculum edits.</p>
+  <div class="table-scroll" style="max-height:320px; overflow-y:auto;">
+    {% for l in logs %}
+    <div class="log-row"><span class="t">{{ l.time[:19] }}</span> — <b>{{ l.actor }}</b> {{ l.action }}: {{ l.detail }}</div>
+    {% else %}
+    <p class="note">No activity recorded yet.</p>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="panel-card">
+  <h3 style="color:var(--maroon)">Danger Zone</h3>
+  <p class="note">This erases every student, teacher, admin, announcement, fee record, and curriculum setting. This cannot be undone. Type <b>ERASE</b> below to confirm.</p>
+  <form method="POST" action="{{ url_for('admin_reset_all') }}" onsubmit="return confirm('This permanently erases ALL school data. Are you absolutely sure?');">
+    <div class="field" style="max-width:220px;"><input type="text" name="confirm" placeholder="Type ERASE"></div>
+    <button class="btn-sm btn-danger" type="submit">Erase All School Data</button>
+  </form>
+</div>
+
+<div class="panel-card">
+  <h3>Sharing This Portal</h3>
+  <p class="note">Share the portal's web address with your students, teachers, and staff so they can sign in with their own accounts. Don't post it publicly — anyone with a valid ID and password can log in.</p>
+</div>
+{% endblock %}

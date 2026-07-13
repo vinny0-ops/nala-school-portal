@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Overview — Nala School Portal{% endblock %}
+{% block tabs %}{% include "_admin_tabs.html" %}{% endblock %}
+{% block content %}
+{% if is_default_admin %}
+<div class="warn-banner">You're still using the default admin account (ADM-001). Go to <b>Manage Staff</b> to change this password before sharing the portal link with anyone.</div>
+{% endif %}
+<form method="GET" id="controlsForm">
+<div class="controls-row">
+  <div class="control">
+    <label>Class</label>
+    <select name="form" onchange="document.getElementById('controlsForm').submit()">
+      <option value="All" {{ 'selected' if form=='All' }}>All Forms</option>
+      {% for f in forms %}<option value="{{ f.name }}" {{ 'selected' if f.name==form }}>Form {{ f.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="control">
+    <label>Exam Type</label>
+    <select name="exam" onchange="document.getElementById('controlsForm').submit()">
+      {% for e in exam_types %}<option value="{{ e }}" {{ 'selected' if e==exam }}>{{ e }}</option>{% endfor %}
+    </select>
+  </div>
+</div>
+</form>
+<div class="grid-3">
+  <div class="stat"><div class="k">Students in View</div><div class="v">{{ roster_count }}<span> of {{ total_students }} total</span></div></div>
+  <div class="stat"><div class="k">Total Teachers</div><div class="v">{{ teacher_count }}</div></div>
+  <div class="stat"><div class="k">Average Score</div><div class="v">{{ '%.1f'|format(avg) }}<span>%</span></div></div>
+</div>
+<div class="grid-3">
+  <div class="stat"><div class="k">Total Fees Due (school-wide)</div><div class="v" style="font-size:18px">{{ total_due|tzs }}</div></div>
+  <div class="stat"><div class="k">Total Fees Collected</div><div class="v" style="font-size:18px">{{ total_paid|tzs }}</div></div>
+  <div class="stat"><div class="k">Outstanding Balance</div><div class="v" style="font-size:18px">{{ ((total_due-total_paid) if total_due>total_paid else 0)|tzs }}</div></div>
+</div>
+<div class="panel-card">
+  <h3>Division Distribution (NECTA-style)</h3>
+  {% for div, count in div_counts.items() %}
+  <div class="bar-row"><div class="bar-label">{{ div }}</div>
+    <div class="bar-track"><div class="bar-fill" style="width:{{ (count/roster_count*100) if roster_count else 0 }}%"></div></div>
+    <div class="bar-value">{{ count }}</div></div>
+  {% endfor %}
+</div>
+<div class="panel-card">
+  <h3>Top Performing Subject</h3>
+  <p style="font-size:14px;color:var(--ink)">
+    {% if top_subject %}{{ top_subject.name }} — average {{ '%.1f'|format(top_subject.avg) }}% across the selected group this exam.
+    {% else %}No data for this selection.{% endif %}
+  </p>
+</div>
+{% endblock %}

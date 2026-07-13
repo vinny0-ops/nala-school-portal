@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Edit Student — Nala School Portal{% endblock %}
+{% block tabs %}{% include "_admin_tabs.html" %}{% endblock %}
+{% block content %}
+<div class="panel-card">
+  <h3>Edit Student — {{ student.name }}</h3>
+  <form method="POST">
+    <div class="grid-2">
+      <div class="field"><label>Full Name</label><input type="text" name="name" value="{{ student.name }}" required></div>
+      <div class="field"><label>Sex</label>
+        <select name="sex"><option value="M" {{ 'selected' if student.sex=='M' }}>M</option><option value="F" {{ 'selected' if student.sex=='F' }}>F</option></select>
+      </div>
+      <div class="field"><label>Form</label>
+        <select name="form">{% for f in forms %}<option value="{{ f.name }}" {{ 'selected' if f.name==student.form }}>Form {{ f.name }}</option>{% endfor %}</select>
+      </div>
+      <div class="field"><label>Stream</label><input type="text" name="stream" value="{{ student.stream }}"></div>
+      <div class="field"><label>Parent/Guardian Name</label><input type="text" name="parent_name" value="{{ student.parent_name }}"></div>
+      <div class="field"><label>Parent/Guardian Phone</label><input type="tel" name="parent_phone" value="{{ student.parent_phone }}"></div>
+      <div class="field"><label>Parent/Guardian Email</label><input type="email" name="parent_email" value="{{ student.parent_email }}"></div>
+    </div>
+    <div class="pdf-actions">
+      <button class="btn-sm btn-gold" type="submit">Save Changes</button>
+      <a class="btn-sm btn-outline" style="text-decoration:none;" href="{{ url_for('admin_students') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}NECTA Format — Nala School Portal{% endblock %}
+{% block tabs %}
+  {% if is_admin %}{% include "_admin_tabs.html" %}{% else %}{% include "_teacher_tabs.html" %}{% endif %}
+{% endblock %}
+{% block content %}
+<form method="GET" id="controlsForm" action="{{ url_for(back_endpoint) }}">
+<div class="controls-row">
+  <div class="control">
+    <label>Class</label>
+    <select name="form" onchange="document.getElementById('controlsForm').submit()">
+      {% for f in forms %}<option value="{{ f.name }}" {{ 'selected' if f.name==form }}>Form {{ f.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="control">
+    <label>Exam Type</label>
+    <select name="exam" onchange="document.getElementById('controlsForm').submit()">
+      {% for e in exam_types %}<option value="{{ e }}" {{ 'selected' if e==exam }}>{{ e }}</option>{% endfor %}
+    </select>
+  </div>
+</div>
+</form>
+
+<div class="panel-card">
+  <p class="note">This mirrors the National Examinations Council of Tanzania (NECTA) online results layout — candidate numbers, AGGT, DIV, per-subject grade strings, and centre-level division and subject performance. Codes and formatting are illustrative, not official NECTA output.</p>
+
+  <div class="necta-doc">
+    <h1>NATIONAL EXAMINATIONS COUNCIL OF TANZANIA</h1>
+    <h2>FORM {{ roman_form_word }} TERM RESULTS — {{ exam.upper() }} {{ academic_year }}</h2>
+    <h3>{{ school_code }} - {{ school_name_official }}</h3>
+
+    <div class="section-title">DIVISION PERFORMANCE SUMMARY</div>
+    <table>
+      <thead><tr><th>SEX</th><th class="num">I</th><th class="num">II</th><th class="num">III</th><th class="num">IV</th><th class="num">0</th></tr></thead>
+      <tbody>
+        {% for sex in ['M','F'] %}
+          {% set c = sex_counts[sex] %}
+          {% if c.I+c.II+c.III+c.IV+c['0'] > 0 %}
+          <tr><td>{{ sex }}</td><td class="num">{{ c.I }}</td><td class="num">{{ c.II }}</td><td class="num">{{ c.III }}</td><td class="num">{{ c.IV }}</td><td class="num">{{ c['0'] }}</td></tr>
+          {% endif %}
+        {% endfor %}
+        <tr><td>T</td><td class="num">{{ div_counts.I }}</td><td class="num">{{ div_counts.II }}</td><td class="num">{{ div_counts.III }}</td><td class="num">{{ div_counts.IV }}</td><td class="num">{{ div_counts['0'] }}</td></tr>
+      </tbody>
+    </table>
+
+    <table>
+      <thead><tr><th>CNO</th><th class="num">SEX</th><th class="num">AGGT</th><th class="num">DIV</th><th>DETAILED SUBJECTS</th></tr></thead>
+      <tbody>
+        {% for r in cand_rows %}
+        <tr><td>{{ r.cno }}</td><td class="num">{{ r.sex }}</td><td class="num">{{ r.agg }}</td><td class="num">{{ r.div }}</td><td class="subjects-cell">{{ r.subj_str }}</td></tr>
+        {% else %}
+        <tr><td colspan="5" style="text-align:center;">No candidates in this class.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="section-title">EXAMINATION CENTRE RANKING</div>
+    <table><tbody>
+      <tr><td style="font-weight:700;">EXAMINATION CENTRE REGION</td><td>{{ school_region }}</td></tr>
+      <tr><td style="font-weight:700;">TOTAL PASSED CANDIDATES</td><td>{{ total_passed }}</td></tr>
+      <tr><td style="font-weight:700;">EXAMINATION CENTRE GPA</td><td>{{ '%.4f'|format(centre_gpa) }} {{ competency_level_centre.upper() }}</td></tr>
+    </tbody></table>
+
+    <div class="section-title">EXAMINATION CENTRE DIVISION PERFORMANCE</div>
+    <table>
+      <thead><tr><th class="num">REGIST</th><th class="num">SAT</th><th class="num">CLEAN</th><th class="num">DIV I</th><th class="num">DIV II</th><th class="num">DIV III</th><th class="num">DIV IV</th><th class="num">DIV 0</th></tr></thead>
+      <tbody><tr><td class="num">{{ roster_count }}</td><td class="num">{{ roster_count }}</td><td class="num">{{ roster_count }}</td>
+        <td class="num">{{ div_counts.I }}</td><td class="num">{{ div_counts.II }}</td><td class="num">{{ div_counts.III }}</td><td class="num">{{ div_counts.IV }}</td><td class="num">{{ div_counts['0'] }}</td></tr></tbody>
+    </table>
+
+    <div class="section-title">EXAMINATION CENTRE SUBJECTS PERFORMANCE</div>
+    <table>
+      <thead><tr><th>CODE</th><th>SUBJECT NAME</th><th class="num">REG</th><th class="num">SAT</th><th class="num">PASS</th><th class="num">GPA</th><th>COMPETENCY LEVEL</th></tr></thead>
+      <tbody>
+        {% for s in subj_perf %}
+        <tr><td class="num">{{ s.code }}</td><td>{{ s.name.upper() }}</td><td class="num">{{ s.reg }}</td><td class="num">{{ s.sat }}</td><td class="num">{{ s.pass }}</td><td class="num">{{ '%.4f'|format(s.gpa) }}</td><td>{{ competency_level(s.gpa) }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pdf-actions">
+    <a class="btn-sm btn-gold" style="text-decoration:none;" href="{{ url_for('necta_report_pdf', form=form, exam=exam) }}">Download PDF</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}NECTA Analysis — Nala School Portal{% endblock %}
+{% block tabs %}{% include "_admin_tabs.html" %}{% endblock %}
+{% block content %}
+<form method="GET" id="controlsForm">
+<div class="controls-row">
+  <div class="control">
+    <label>Class</label>
+    <select name="form" onchange="document.getElementById('controlsForm').submit()">
+      <option value="All" {{ 'selected' if form=='All' }}>All Forms</option>
+      {% for f in forms %}<option value="{{ f.name }}" {{ 'selected' if f.name==form }}>Form {{ f.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="control">
+    <label>Exam Type</label>
+    <select name="exam" onchange="document.getElementById('controlsForm').submit()">
+      {% for e in exam_types %}<option value="{{ e }}" {{ 'selected' if e==exam }}>{{ e }}</option>{% endfor %}
+    </select>
+  </div>
+</div>
+</form>
+<div class="panel-card">
+  <h3>Subject Performance — Compared to NECTA Grade Bands</h3>
+  <p class="note">Bands: A ≥75, B ≥65, C ≥45, D ≥30, F &lt;30. NECTA pass mark is 30 — pass rate below counts D and above.</p>
+  <div class="table-scroll">
+  <table>
+    <thead><tr><th>Subject</th><th class="num">Avg Score</th><th class="num">Pass Rate (≥30)</th></tr></thead>
+    <tbody>
+      {% for s in subj_rows %}
+      <tr><td>{{ s.name }}</td><td class="num mono">{{ '%.1f'|format(s.avg) }}</td><td class="num mono">{{ '%.0f'|format(s.pass_rate) }}%</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+<div class="panel-card">
+  <h3>Subjects Needing Attention</h3>
+  {% for s in attention %}
+  <div class="bar-row"><div class="bar-label">{{ s.name }}</div>
+    <div class="bar-track"><div class="bar-fill" style="width:{{ s.avg }}%; background:var(--maroon)"></div></div>
+    <div class="bar-value">{{ '%.0f'|format(s.avg) }}%</div></div>
+  {% else %}
+  <p style='font-size:13px;color:#6b6b5e'>No subjects currently below the 55% attention threshold.</p>
+  {% endfor %}
+</div>
+{% endblock %}

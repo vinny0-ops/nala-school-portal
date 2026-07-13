@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Students — Nala School Portal{% endblock %}
+{% block tabs %}{% include "_admin_tabs.html" %}{% endblock %}
+{% block content %}
+<form method="GET" id="controlsForm">
+<div class="controls-row">
+  <div class="control">
+    <label>Class</label>
+    <select name="form" onchange="document.getElementById('controlsForm').submit()">
+      <option value="All" {{ 'selected' if form=='All' }}>All Forms</option>
+      {% for f in forms %}<option value="{{ f.name }}" {{ 'selected' if f.name==form }}>Form {{ f.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="control">
+    <label>Exam Type</label>
+    <select name="exam" onchange="document.getElementById('controlsForm').submit()">
+      {% for e in exam_types %}<option value="{{ e }}" {{ 'selected' if e==exam }}>{{ e }}</option>{% endfor %}
+    </select>
+  </div>
+  <input type="hidden" name="q" id="qHidden" value="{{ q }}">
+</div>
+</form>
+<div class="panel-card">
+  <div class="search-box">
+    <label>Search by name or ID</label>
+    <input type="text" id="qInput" value="{{ q }}" placeholder="Type to filter…"
+      onkeydown="if(event.key==='Enter'){ document.getElementById('qHidden').value=this.value; document.getElementById('controlsForm').submit(); }">
+  </div>
+  <h3>Students — {{ exam }}</h3>
+  <div class="table-scroll">
+  <table>
+    <thead><tr><th>Name</th><th>ID</th><th>Class</th><th class="num">Average</th><th class="num">Division</th><th class="num">Actions</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.student.name }}</td><td class="mono" style="font-size:12px">{{ r.student.id }}</td>
+        <td style="font-size:12.5px">Form {{ r.student.form }} — {{ r.student.stream }}</td>
+        <td class="num mono">{{ '%.1f'|format(r.avg) }}%</td><td class="num"><span class="division-pill">{{ r.division }}</span></td>
+        <td class="num"><div class="row-actions">
+          <a class="btn-sm btn-outline" style="text-decoration:none;" href="{{ url_for('admin_student_edit', sid=r.student.id) }}">Edit</a>
+          <button class="btn-sm btn-outline" type="button" onclick="var f=this.closest('tr').querySelector('.pw-form'); f.style.display = f.style.display==='none'?'inline-block':'none';">Reset PW</button>
+          <form method="POST" action="{{ url_for('admin_student_delete', sid=r.student.id) }}" onsubmit="return confirm('Delete {{ r.student.name }}? This removes all their results and fee records permanently.');" style="display:inline;">
+            <button class="btn-sm btn-danger" type="submit">Delete</button>
+          </form>
+        </div>
+        <form class="pw-form" method="POST" action="{{ url_for('admin_student_reset_pw', sid=r.student.id) }}" style="display:none; margin-top:6px;">
+          <input type="text" name="password" placeholder="New password" style="width:140px; display:inline-block;">
+          <button class="btn-sm" type="submit">Set</button>
+        </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="text-align:center;color:#8a8a78;padding:16px 0;">No students match this view.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

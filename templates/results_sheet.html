@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Results Sheet — Nala School Portal{% endblock %}
+{% block tabs %}
+  {% if is_admin %}{% include "_admin_tabs.html" %}{% else %}{% include "_teacher_tabs.html" %}{% endif %}
+{% endblock %}
+{% block content %}
+<form method="GET" id="controlsForm" action="{{ url_for(back_endpoint) }}">
+<div class="controls-row">
+  <div class="control">
+    <label>Class</label>
+    <select name="form" onchange="document.getElementById('controlsForm').submit()">
+      {% for f in forms %}<option value="{{ f.name }}" {{ 'selected' if f.name==form }}>Form {{ f.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="control">
+    <label>Exam Type</label>
+    <select name="exam" onchange="document.getElementById('controlsForm').submit()">
+      {% for e in exam_types %}<option value="{{ e }}" {{ 'selected' if e==exam }}>{{ e }}</option>{% endfor %}
+    </select>
+  </div>
+</div>
+</form>
+
+<div class="panel-card">
+  <div class="report-head" style="margin:-24px -26px 18px; border-radius:4px 4px 0 0;">
+    <div><div class="school">Nala Secondary School</div><div class="title">Form {{ form }} — {{ exam }} Results Sheet</div></div>
+    <div class="meta">{{ term_label }}, {{ academic_year }}<br>Pass mark: <b>30</b> (NECTA standard)</div>
+  </div>
+  <p class="note">Ranked by average score. GPA is the average NECTA grade points across all subjects (lower is better). Division uses the best 7 subjects.</p>
+  <div class="table-scroll">
+  <table>
+    <thead><tr>
+      <th>Pos.</th><th>Student</th>
+      {% for s in subjects %}<th class="num" title="{{ s.name }}">{{ s.abbr }}</th>{% endfor %}
+      <th class="num">Total</th><th class="num">Avg</th><th class="num">GPA</th><th class="num">Division</th>
+    </tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="num pos-badge">{{ r.position }}</td><td>{{ r.name }}</td>
+        {% for sc in r.scores %}<td class="num mono">{{ sc }}</td>{% endfor %}
+        <td class="num mono">{{ r.total }}</td><td class="num mono">{{ '%.1f'|format(r.avg) }}</td>
+        <td class="num mono">{{ '%.2f'|format(r.gpa) }}</td><td class="num"><span class="division-pill">{{ r.division }}</span></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="{{ subjects|length + 6 }}" style="text-align:center;color:#8a8a78;padding:16px 0;">No students in Form {{ form }} yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <div class="pdf-actions">
+    <a class="btn-sm btn-gold" style="text-decoration:none;" href="{{ url_for('results_sheet_pdf', form=form, exam=exam) }}">Download PDF</a>
+  </div>
+</div>
+
+<div class="panel-card">
+  <h3>Subject Position</h3>
+  <form method="GET" action="{{ url_for(back_endpoint) }}">
+    <input type="hidden" name="form" value="{{ form }}">
+    <input type="hidden" name="exam" value="{{ exam }}">
+    <div class="controls-row">
+      <div class="control">
+        <label>Subject</label>
+        <select name="rank_subject" onchange="this.form.submit()">
+          {% for s in subjects %}<option value="{{ s.id }}" {{ 'selected' if s.id==subject_id }}>{{ s.name }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+  </form>
+  <div class="table-scroll">
+  <table>
+    <thead><tr><th>Position</th><th>Student</th><th class="num">Score</th></tr></thead>
+    <tbody>
+      {% for r in rank_rows %}
+      <tr><td class="num pos-badge">{{ r.position }}</td><td>{{ r.name }}</td><td class="num mono">{{ r.score }}</td></tr>
+      {% else %}
+      <tr><td colspan="3" style="text-align:center;color:#8a8a78;padding:12px 0;">No data.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

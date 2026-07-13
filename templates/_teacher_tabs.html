@@ -1,0 +1,6 @@
+<a class="tab {{ 'active' if request.endpoint=='teacher_enter' }}" href="{{ url_for('teacher_enter') }}">Enter Results</a>
+<a class="tab {{ 'active' if request.endpoint=='teacher_analysis' }}" href="{{ url_for('teacher_analysis') }}">Class Analysis</a>
+<a class="tab {{ 'active' if request.endpoint=='teacher_sheet' }}" href="{{ url_for('teacher_sheet') }}">Results Sheet</a>
+<a class="tab {{ 'active' if request.endpoint=='teacher_necta' }}" href="{{ url_for('teacher_necta') }}">NECTA Format</a>
+<a class="tab {{ 'active' if request.endpoint=='teacher_parents' }}" href="{{ url_for('teacher_parents') }}">Parent Reports</a>
+<a class="tab {{ 'active' if request.endpoint=='teacher_announcements' }}" href="{{ url_for('teacher_announcements') }}">Announcements</a>

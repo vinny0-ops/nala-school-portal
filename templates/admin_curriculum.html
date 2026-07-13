@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Curriculum — Nala School Portal{% endblock %}
+{% block tabs %}{% include "_admin_tabs.html" %}{% endblock %}
+{% block content %}
+<div class="panel-card">
+  <h3>Term &amp; Academic Year</h3>
+  <p class="note">Used across report cards, results sheets and NECTA-format documents.</p>
+  <form method="POST" action="{{ url_for('admin_curriculum_term') }}">
+    <div class="grid-2">
+      <div class="field"><label>Term Label</label><input type="text" name="term_label" value="{{ term_label }}" placeholder="e.g. Term II"></div>
+      <div class="field"><label>Academic Year</label><input type="text" name="academic_year" value="{{ academic_year }}" placeholder="e.g. 2026"></div>
+    </div>
+    <button class="btn-sm btn-gold" type="submit">Save</button>
+  </form>
+</div>
+
+<div class="panel-card">
+  <h3>Class Levels</h3>
+  <div class="chip-list">
+    {% for f in forms %}
+    <span class="chip">Form {{ f.name }}
+      <form method="POST" action="{{ url_for('admin_curriculum_delete_form', name=f.name) }}" style="display:inline;" onsubmit="return confirm('Remove Form {{ f.name }}?');">
+        <button type="submit">✕</button>
+      </form>
+    </span>
+    {% endfor %}
+  </div>
+  <form method="POST" action="{{ url_for('admin_curriculum_add_form') }}">
+    <div class="controls-row">
+      <div class="control"><label>Add Class Level</label><input type="text" name="name" placeholder="e.g. V"></div>
+    </div>
+    <button class="btn-sm btn-outline" type="submit">Add Level</button>
+  </form>
+</div>
+
+<div class="panel-card">
+  <h3>Subjects</h3>
+  <p class="note">Adding a subject starts every student at a score of 0 for it. Removing a subject permanently deletes all recorded scores for it — this cannot be undone.</p>
+  <div class="chip-list">
+    {% for s in subjects %}
+    <span class="chip">{{ s.name }}
+      <form method="POST" action="{{ url_for('admin_curriculum_delete_subject', subject_id=s.id) }}" style="display:inline;" onsubmit="return confirm('Remove {{ s.name }}? This deletes every recorded score for it.');">
+        <button type="submit">✕</button>
+      </form>
+    </span>
+    {% endfor %}
+  </div>
+  <form method="POST" action="{{ url_for('admin_curriculum_add_subject') }}">
+    <div class="controls-row">
+      <div class="control"><label>Add Subject</label><input type="text" name="name" placeholder="e.g. Agriculture"></div>
+    </div>
+    <button class="btn-sm btn-outline" type="submit">Add Subject</button>
+  </form>
+</div>
+{% endblock %}
