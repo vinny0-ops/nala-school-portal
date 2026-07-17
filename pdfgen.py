@@ -21,7 +21,7 @@ center = ParagraphStyle('center', parent=styles['Normal'], alignment=TA_CENTER)
 
 
 def _header_table(school_line, title_line, meta_lines, width):
-    data = [[Paragraph(f"<font color='#C9A227' size=8>NALA SECONDARY SCHOOL</font><br/><font color='white' size=14><b>{title_line}</b></font>", normal),
+    data = [[Paragraph(f"<font color='#C9A227' size=8>{school_line.upper()}</font><br/><font color='white' size=14><b>{title_line}</b></font>", normal),
             Paragraph("<br/>".join(meta_lines), sub_style)]]
     t = Table(data, colWidths=[width * 0.6, width * 0.4])
     t.setStyle(TableStyle([
@@ -36,7 +36,7 @@ def _header_table(school_line, title_line, meta_lines, width):
     return t
 
 
-def build_report_card(student, exam, subjects, scores, summ, position, class_size, term_label, academic_year, parent_copy=False):
+def build_report_card(student, exam, subjects, scores, summ, position, class_size, term_label, academic_year, parent_copy=False, school_name='Nala Secondary School'):
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=18 * mm, bottomMargin=18 * mm,
                             leftMargin=16 * mm, rightMargin=16 * mm)
@@ -45,7 +45,7 @@ def build_report_card(student, exam, subjects, scores, summ, position, class_siz
     title = ("Parent Report — " if parent_copy else "") + f"{exam} Report Card"
     meta = [f"Student: <b>{student['name']}</b>", f"Class: Form {student['form']} — {student['stream']}",
            f"{term_label}, {academic_year}"]
-    elements.append(_header_table("Nala Secondary School", title, meta, width))
+    elements.append(_header_table(school_name, title, meta, width))
     elements.append(Spacer(1, 6))
 
     data = [["#", "Subject", "Score", "Grade", "Subj. Pos.", "Remark"]]
@@ -89,12 +89,12 @@ def build_report_card(student, exam, subjects, scores, summ, position, class_siz
     return buf
 
 
-def build_results_sheet(form, exam, subjects, rows, term_label, academic_year):
+def build_results_sheet(form, exam, subjects, rows, term_label, academic_year, school_name='Nala Secondary School'):
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=landscape(A4), topMargin=14 * mm, bottomMargin=14 * mm,
                             leftMargin=12 * mm, rightMargin=12 * mm)
     width = doc.width
-    elements = [_header_table("Nala Secondary School", f"Form {form} — {exam} Results Sheet",
+    elements = [_header_table(school_name, f"Form {form} — {exam} Results Sheet",
                               [f"{term_label}, {academic_year}", "Pass mark: 30 (NECTA standard)"], width),
                Spacer(1, 8)]
 
@@ -176,13 +176,13 @@ def _grid_style():
     ])
 
 
-def build_receipt(student, payment, due, paid_total):
+def build_receipt(student, payment, due, paid_total, school_name='Nala Secondary School'):
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=20 * mm, bottomMargin=20 * mm,
                             leftMargin=18 * mm, rightMargin=18 * mm)
     width = doc.width
     receipt_no = f"RCT-{payment['id']:06d}"
-    elements = [Paragraph("Nala Secondary School", ParagraphStyle('t', parent=styles['Heading1'], textColor=CHALK)),
+    elements = [Paragraph(school_name, ParagraphStyle('t', parent=styles['Heading1'], textColor=CHALK)),
                Paragraph("Official Payment Receipt", normal), Spacer(1, 10)]
     data = [["Receipt No", receipt_no], ["Date", payment['date']], ["Student", student['name']],
            ["Student ID", student['id']], ["Class", f"Form {student['form']} — {student['stream']}"],
@@ -201,14 +201,14 @@ def build_receipt(student, payment, due, paid_total):
     return buf
 
 
-def build_reminder(student, due, paid, term_label, academic_year):
+def build_reminder(student, due, paid, term_label, academic_year, school_name='Nala Secondary School'):
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=20 * mm, bottomMargin=20 * mm,
                             leftMargin=18 * mm, rightMargin=18 * mm)
     width = doc.width
     balance = max(due - paid, 0)
     salutation = f"Dear {student['parent_name']}," if student['parent_name'] else "Dear Parent/Guardian,"
-    elements = [Paragraph("Nala Secondary School", ParagraphStyle('t', parent=styles['Heading1'], textColor=CHALK)),
+    elements = [Paragraph(school_name, ParagraphStyle('t', parent=styles['Heading1'], textColor=CHALK)),
                Paragraph("Fee Balance Reminder", normal), Spacer(1, 14),
                Paragraph(salutation, normal), Spacer(1, 8),
                Paragraph(f"This letter is to remind you of an outstanding school fee balance for "

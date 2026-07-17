@@ -17,9 +17,6 @@ app.permanent_session_lifetime = timedelta(hours=12)
 
 db.init_db()
 
-SCHOOL_CODE = "S9081"
-SCHOOL_NAME_OFFICIAL = "NALA SECONDARY SCHOOL"
-SCHOOL_REGION = "DAR ES SALAAM"
 MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_SECONDS = 60
 
@@ -147,9 +144,21 @@ def inject_globals():
     conn = db.get_db()
     term_label = db.get_setting(conn, 'term_label', 'Term II')
     academic_year = db.get_setting(conn, 'academic_year', '2026')
+    school_name = db.get_setting(conn, 'school_name', 'Nala Secondary School')
+    school_code = db.get_setting(conn, 'school_code', 'S9081')
+    school_region = db.get_setting(conn, 'school_region', '')
+    school_district = db.get_setting(conn, 'school_district', '')
+    pending_count = 0
+    user = current_user()
+    if user and user['role'] == 'admin':
+        row = conn.execute("""SELECT
+            (SELECT COUNT(*) FROM students WHERE status='pending') +
+            (SELECT COUNT(*) FROM teachers WHERE status='pending') AS c""").fetchone()
+        pending_count = row['c']
     conn.close()
-    return dict(current_user=current_user(), term_label=term_label, academic_year=academic_year,
-                school_name="Nala Secondary School")
+    return dict(current_user=user, term_label=term_label, academic_year=academic_year,
+                school_name=school_name, school_code=school_code, school_region=school_region,
+                school_district=school_district, pending_count=pending_count)
 
 
 # ---------------- Login / Logout ----------------
@@ -189,6 +198,11 @@ def login():
         table = {'student': 'students', 'teacher': 'teachers', 'admin': 'admins'}[role]
         record = conn.execute(f"SELECT * FROM {table} WHERE id=?", (uid,)).fetchone()
 
+        if record and role in ('student', 'teacher') and record['status'] == 'pending':
+            conn.close()
+            return render_template('login.html', role=role,
+                error="Your account is registered but still awaiting admin approval. Check back soon.")
+
         if record and check_password_hash(record['password_hash'], pwd):
             conn.execute("DELETE FROM login_attempts WHERE key=?", (key,))
             conn.commit()
@@ -222,6 +236,110 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    role = request.values.get('role', 'admin')
+    if role not in ('student', 'teacher', 'admin'):
+        role = 'admin'
+    error = None
+    success = None
+
+    if request.method == 'POST':
+        role = request.form.get('role', 'admin')
+        uid = request.form.get('id', '').strip()
+        code = request.form.get('recovery_code', '').strip()
+        new_pw = request.form.get('new_password', '')
+        confirm_pw = request.form.get('confirm_password', '')
+        table = {'student': 'students', 'teacher': 'teachers', 'admin': 'admins'}[role]
+
+        conn = db.get_db()
+        record = conn.execute(f"SELECT * FROM {table} WHERE id=?", (uid,)).fetchone()
+
+        if not record or not record['recovery_code_hash'] or not check_password_hash(record['recovery_code_hash'], code):
+            error = "That ID and recovery code don't match our records."
+        elif len(new_pw) < 4:
+            error = "New password must be at least 4 characters."
+        elif new_pw != confirm_pw:
+            error = "New password and confirmation don't match."
+        else:
+            conn.execute(f"UPDATE {table} SET password_hash=? WHERE id=?",
+                         (generate_password_hash(new_pw), uid))
+            conn.execute("DELETE FROM login_attempts WHERE key=?", (lockout_key(role, uid),))
+            conn.commit()
+            db.log(conn, f"{role}:{uid}", "password_recovery", f"{role} {uid} reset their own password via recovery code")
+            success = "Password reset. You can sign in now with your new password."
+        conn.close()
+
+    return render_template('forgot_password.html', role=role, error=error, success=success)
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def self_register():
+    role = request.values.get('role', 'student')
+    if role not in ('student', 'teacher'):
+        role = 'student'
+    error = None
+    recovery_code_shown = None
+    conn = db.get_db()
+    forms = db.get_forms(conn)
+    subjects = db.get_subjects(conn)
+
+    if request.method == 'POST':
+        role = request.form.get('role', 'student')
+        uid = request.form.get('id', '').strip()
+        pwd = request.form.get('password', '')
+        confirm_pw = request.form.get('confirm_password', '')
+        name = request.form.get('name', '').strip()
+
+        exists = (conn.execute("SELECT 1 FROM admins WHERE id=?", (uid,)).fetchone()
+                  or conn.execute("SELECT 1 FROM teachers WHERE id=?", (uid,)).fetchone()
+                  or conn.execute("SELECT 1 FROM students WHERE id=?", (uid,)).fetchone())
+
+        if not uid or not pwd or not name:
+            error = "Please fill in your ID, name, and password."
+        elif len(pwd) < 4:
+            error = "Password must be at least 4 characters."
+        elif pwd != confirm_pw:
+            error = "Password and confirmation don't match."
+        elif exists:
+            error = f'"{uid}" is already registered. Choose a different ID, or use Forgot Password if it\'s yours.'
+        else:
+            recovery_code = '-'.join(secrets.token_hex(2).upper() for _ in range(2))
+            pw_hash = generate_password_hash(pwd)
+            rc_hash = generate_password_hash(recovery_code)
+
+            if role == 'student':
+                form = request.form.get('form', '').strip().upper()
+                stream = request.form.get('stream', '').strip() or 'A'
+                sex = 'F' if request.form.get('sex') == 'F' else 'M'
+                if form not in [f['name'] for f in forms]:
+                    error = "Please choose a valid class."
+                else:
+                    conn.execute("""INSERT INTO students (id,name,password_hash,form,stream,sex,
+                                    recovery_code_hash,status) VALUES (?,?,?,?,?,?,?, 'pending')""",
+                                 (uid, name, pw_hash, form, stream, sex, rc_hash))
+                    conn.commit()
+                    db.log(conn, 'system', 'self_register', f"Student {name} ({uid}) self-registered, awaiting approval")
+            else:
+                subject_ids = request.form.getlist('subjects')
+                if not subject_ids:
+                    error = "Please select at least one subject you teach."
+                else:
+                    conn.execute("""INSERT INTO teachers (id,name,password_hash,recovery_code_hash,status)
+                                    VALUES (?,?,?,?, 'pending')""", (uid, name, pw_hash, rc_hash))
+                    for s in subject_ids:
+                        conn.execute("INSERT INTO teacher_subjects (teacher_id, subject_id) VALUES (?,?)", (uid, int(s)))
+                    conn.commit()
+                    db.log(conn, 'system', 'self_register', f"Teacher {name} ({uid}) self-registered, awaiting approval")
+
+            if not error:
+                recovery_code_shown = recovery_code
+
+    conn.close()
+    return render_template('register.html', role=role, error=error, forms=forms, subjects=subjects,
+                            recovery_code_shown=recovery_code_shown)
 
 
 @app.route('/dashboard')
@@ -320,16 +438,17 @@ def student_report_pdf():
     my_row = next(r for r in sheet if r['id'] == sid)
     term_label = db.get_setting(conn, 'term_label', 'Term II')
     academic_year = db.get_setting(conn, 'academic_year', '2026')
+    school_name = db.get_setting(conn, 'school_name', 'Nala Secondary School')
     conn.close()
     from pdfgen import build_report_card
     buf = build_report_card(student, exam, subjects, scores, summ, my_row['position'], len(sheet),
-                            term_label, academic_year)
+                            term_label, academic_year, school_name=school_name)
     fname = f"{student['name'].replace(' ','_')}_{exam.replace('/','-')}.pdf"
     return send_file(buf, download_name=fname, as_attachment=True, mimetype='application/pdf')
 
 
-def candidate_number(index):
-    return f"{SCHOOL_CODE}/{index+1:04d}"
+def candidate_number(index, school_code):
+    return f"{school_code}/{index+1:04d}"
 
 
 def roman_form_word(form):
@@ -337,6 +456,10 @@ def roman_form_word(form):
 
 
 def necta_context(conn, form, exam):
+    school_code = db.get_setting(conn, 'school_code', 'S9081')
+    school_name_official = db.get_setting(conn, 'school_name', 'Nala Secondary School').upper()
+    school_region = db.get_setting(conn, 'school_region', '')
+    school_district = db.get_setting(conn, 'school_district', '')
     subjects = db.get_subjects(conn)
     students = conn.execute("SELECT * FROM students WHERE form=? ORDER BY name", (form,)).fetchall() if form else []
     div_counts = {"I": 0, "II": 0, "III": 0, "IV": 0, "0": 0}
@@ -351,7 +474,7 @@ def necta_context(conn, form, exam):
         if st['sex'] in sex_counts:
             sex_counts[st['sex']][div_key] = sex_counts[st['sex']].get(div_key, 0) + 1
         subj_str = " ".join(f"{s['abbr']}-'{grade_for(scores[idx])['letter']}'" for idx, s in enumerate(subjects))
-        cand_rows.append({"cno": candidate_number(i), "sex": st['sex'], "agg": summ['point_sum'],
+        cand_rows.append({"cno": candidate_number(i, school_code), "sex": st['sex'], "agg": summ['point_sum'],
                           "div": div_key, "subj_str": subj_str, "name": st['name']})
         all_points.extend(grade_for(s)['points'] for s in scores)
 
@@ -368,8 +491,9 @@ def necta_context(conn, form, exam):
 
     return dict(cand_rows=cand_rows, div_counts=div_counts, sex_counts=sex_counts,
                total_passed=total_passed, centre_gpa=centre_gpa, subj_perf=subj_perf,
-               roster_count=len(students), school_code=SCHOOL_CODE,
-               school_name_official=SCHOOL_NAME_OFFICIAL, school_region=SCHOOL_REGION,
+               roster_count=len(students), school_code=school_code,
+               school_name_official=school_name_official, school_region=school_region,
+               school_district=school_district,
                roman_form_word=roman_form_word(form) if form else '',
                competency_level=competency_level, competency_level_centre=competency_level(centre_gpa))
 
@@ -523,10 +647,11 @@ def parent_report_pdf(sid):
     my_row = next(r for r in sheet if r['id'] == sid)
     term_label = db.get_setting(conn, 'term_label', 'Term II')
     academic_year = db.get_setting(conn, 'academic_year', '2026')
+    school_name = db.get_setting(conn, 'school_name', 'Nala Secondary School')
     conn.close()
     from pdfgen import build_report_card
     buf = build_report_card(student, exam, subjects, scores, summ, my_row['position'], len(sheet),
-                            term_label, academic_year, parent_copy=True)
+                            term_label, academic_year, parent_copy=True, school_name=school_name)
     fname = f"ParentReport_{student['name'].replace(' ','_')}_{exam.replace('/','-')}.pdf"
     return send_file(buf, download_name=fname, as_attachment=True, mimetype='application/pdf')
 
@@ -648,9 +773,10 @@ def results_sheet_pdf(form, exam):
     rows = class_sheet(conn, form, exam, subjects)
     term_label = db.get_setting(conn, 'term_label', 'Term II')
     academic_year = db.get_setting(conn, 'academic_year', '2026')
+    school_name = db.get_setting(conn, 'school_name', 'Nala Secondary School')
     conn.close()
     from pdfgen import build_results_sheet
-    buf = build_results_sheet(form, exam, subjects, rows, term_label, academic_year)
+    buf = build_results_sheet(form, exam, subjects, rows, term_label, academic_year, school_name=school_name)
     fname = f"Form{form}_{exam.replace('/','-')}_ResultsSheet.pdf"
     return send_file(buf, download_name=fname, as_attachment=True, mimetype='application/pdf')
 
@@ -820,6 +946,55 @@ def admin_register_template():
     return send_file(buf, download_name='student_registration_template.csv', as_attachment=True, mimetype='text/csv')
 
 
+# ---- Pending self-registration approvals ----
+@app.route('/admin/pending')
+@login_required('admin')
+def admin_pending():
+    conn = db.get_db()
+    pending_students = conn.execute("SELECT * FROM students WHERE status='pending' ORDER BY id").fetchall()
+    pending_teachers = conn.execute("SELECT * FROM teachers WHERE status='pending' ORDER BY id").fetchall()
+    teacher_subjects = {}
+    for t in pending_teachers:
+        rows = conn.execute("""SELECT s.name FROM teacher_subjects ts JOIN subjects s ON s.id=ts.subject_id
+                              WHERE ts.teacher_id=?""", (t['id'],)).fetchall()
+        teacher_subjects[t['id']] = [r['name'] for r in rows]
+    conn.close()
+    return render_template('admin_pending.html', pending_students=pending_students,
+                            pending_teachers=pending_teachers, teacher_subjects=teacher_subjects)
+
+
+@app.route('/admin/pending/<kind>/<sid>/approve', methods=['POST'])
+@login_required('admin')
+def admin_pending_approve(kind, sid):
+    table = 'students' if kind == 'student' else 'teachers'
+    conn = db.get_db()
+    row = conn.execute(f"SELECT * FROM {table} WHERE id=?", (sid,)).fetchone()
+    if row:
+        conn.execute(f"UPDATE {table} SET status='active' WHERE id=?", (sid,))
+        conn.commit()
+        db.log(conn, f"admin:{session['id']}", "approve_registration", f"Approved {kind} {row['name']} ({sid})")
+        flash(f"{row['name']} approved and can now log in.", "success")
+    conn.close()
+    return redirect(url_for('admin_pending'))
+
+
+@app.route('/admin/pending/<kind>/<sid>/reject', methods=['POST'])
+@login_required('admin')
+def admin_pending_reject(kind, sid):
+    table = 'students' if kind == 'student' else 'teachers'
+    conn = db.get_db()
+    row = conn.execute(f"SELECT * FROM {table} WHERE id=?", (sid,)).fetchone()
+    if row:
+        conn.execute(f"DELETE FROM {table} WHERE id=?", (sid,))
+        if kind == 'teacher':
+            conn.execute("DELETE FROM teacher_subjects WHERE teacher_id=?", (sid,))
+        conn.commit()
+        db.log(conn, f"admin:{session['id']}", "reject_registration", f"Rejected {kind} {row['name']} ({sid})")
+        flash(f"Registration for {row['name']} rejected and removed.", "success")
+    conn.close()
+    return redirect(url_for('admin_pending'))
+
+
 # ---- Manage staff ----
 @app.route('/admin/staff')
 @login_required('admin')
@@ -937,10 +1112,16 @@ def admin_curriculum():
     conn = db.get_db()
     term_label = db.get_setting(conn, 'term_label', 'Term II')
     academic_year = db.get_setting(conn, 'academic_year', '2026')
+    school_name = db.get_setting(conn, 'school_name', 'Nala Secondary School')
+    school_code = db.get_setting(conn, 'school_code', 'S9081')
+    school_region = db.get_setting(conn, 'school_region', '')
+    school_district = db.get_setting(conn, 'school_district', '')
     forms = db.get_forms(conn)
     subjects = db.get_subjects(conn)
     conn.close()
     return render_template('admin_curriculum.html', term_label=term_label, academic_year=academic_year,
+                           school_name_setting=school_name, school_code_setting=school_code,
+                           school_region_setting=school_region, school_district_setting=school_district,
                            forms=forms, subjects=subjects)
 
 
@@ -953,6 +1134,27 @@ def admin_curriculum_term():
     db.log(conn, f"admin:{session['id']}", "curriculum_edit", "Updated term label / academic year")
     conn.close()
     flash("Term settings saved.", "success")
+    return redirect(url_for('admin_curriculum'))
+
+
+@app.route('/admin/curriculum/school-info', methods=['POST'])
+@login_required('admin')
+def admin_curriculum_school_info():
+    conn = db.get_db()
+    name = request.form.get('school_name', '').strip()
+    code = request.form.get('school_code', '').strip()
+    region = request.form.get('school_region', '').strip()
+    district = request.form.get('school_district', '').strip()
+    if name:
+        db.set_setting(conn, 'school_name', name)
+    if code:
+        db.set_setting(conn, 'school_code', code)
+    db.set_setting(conn, 'school_region', region)
+    db.set_setting(conn, 'school_district', district)
+    db.log(conn, f"admin:{session['id']}", "school_info_edit",
+           f"Updated school identity: {name or '(unchanged)'} / {code or '(unchanged)'} / {region} / {district}")
+    conn.close()
+    flash("School information saved.", "success")
     return redirect(url_for('admin_curriculum'))
 
 
@@ -1104,9 +1306,10 @@ def receipt_pdf(payment_id):
     student = conn.execute("SELECT * FROM students WHERE id=?", (payment['student_id'],)).fetchone()
     due = fee_due_for(conn, student)
     paid_total = fee_paid_for(conn, student['id'])
+    school_name = db.get_setting(conn, 'school_name', 'Nala Secondary School')
     conn.close()
     from pdfgen import build_receipt
-    buf = build_receipt(student, payment, due, paid_total)
+    buf = build_receipt(student, payment, due, paid_total, school_name=school_name)
     fname = f"Receipt_{student['name'].replace(' ','_')}_{payment_id}.pdf"
     return send_file(buf, download_name=fname, as_attachment=True, mimetype='application/pdf')
 
@@ -1122,9 +1325,10 @@ def reminder_pdf(sid):
     term_label = db.get_setting(conn, 'term_label', 'Term II')
     academic_year = db.get_setting(conn, 'academic_year', '2026')
     db.log(conn, f"admin:{session['id']}", "reminder_generated", f"Generated fee reminder for {student['name']} ({sid})")
+    school_name = db.get_setting(conn, 'school_name', 'Nala Secondary School')
     conn.close()
     from pdfgen import build_reminder
-    buf = build_reminder(student, due, paid, term_label, academic_year)
+    buf = build_reminder(student, due, paid, term_label, academic_year, school_name=school_name)
     fname = f"FeeReminder_{student['name'].replace(' ','_')}.pdf"
     return send_file(buf, download_name=fname, as_attachment=True, mimetype='application/pdf')
 
@@ -1213,6 +1417,20 @@ def admin_settings():
     conn.close()
     db_size = os.path.getsize(db.DB_PATH) if os.path.exists(db.DB_PATH) else 0
     return render_template('admin_settings.html', logs=logs, db_size=db_size)
+
+
+@app.route('/admin/settings/regenerate-recovery-code', methods=['POST'])
+@login_required('admin')
+def admin_regenerate_recovery_code():
+    conn = db.get_db()
+    recovery_code = '-'.join(secrets.token_hex(2).upper() for _ in range(2))
+    conn.execute("UPDATE admins SET recovery_code_hash=? WHERE id=?",
+                 (generate_password_hash(recovery_code), session['id']))
+    conn.commit()
+    db.log(conn, f"admin:{session['id']}", "recovery_code_regenerated", "Generated a new personal recovery code")
+    conn.close()
+    flash(f"Your new recovery code is: {recovery_code} — write it down now, it will not be shown again.", "success")
+    return redirect(url_for('admin_settings'))
 
 
 @app.route('/admin/settings/backup.db')

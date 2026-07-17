@@ -9,12 +9,15 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS admins (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  password_hash TEXT NOT NULL
+  password_hash TEXT NOT NULL,
+  recovery_code_hash TEXT
 );
 CREATE TABLE IF NOT EXISTS teachers (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  password_hash TEXT NOT NULL
+  password_hash TEXT NOT NULL,
+  recovery_code_hash TEXT,
+  status TEXT DEFAULT 'active'
 );
 CREATE TABLE IF NOT EXISTS teacher_subjects (
   teacher_id TEXT NOT NULL,
@@ -30,7 +33,9 @@ CREATE TABLE IF NOT EXISTS students (
   sex TEXT DEFAULT 'M',
   parent_name TEXT DEFAULT '',
   parent_phone TEXT DEFAULT '',
-  parent_email TEXT DEFAULT ''
+  parent_email TEXT DEFAULT '',
+  recovery_code_hash TEXT,
+  status TEXT DEFAULT 'active'
 );
 CREATE TABLE IF NOT EXISTS subjects (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,11 +101,53 @@ def get_db():
     return conn
 
 
+BOOTSTRAP_RECOVERY_CODE = "NALA-RESET-2026"
+
+
+def _column_exists(conn, table, column):
+    cols = [r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+    return column in cols
+
+
+def _migrate(conn):
+    # Add columns to pre-existing databases that were created before this feature existed.
+    if not _column_exists(conn, "admins", "recovery_code_hash"):
+        conn.execute("ALTER TABLE admins ADD COLUMN recovery_code_hash TEXT")
+    if not _column_exists(conn, "teachers", "recovery_code_hash"):
+        conn.execute("ALTER TABLE teachers ADD COLUMN recovery_code_hash TEXT")
+    if not _column_exists(conn, "teachers", "status"):
+        conn.execute("ALTER TABLE teachers ADD COLUMN status TEXT DEFAULT 'active'")
+    if not _column_exists(conn, "students", "recovery_code_hash"):
+        conn.execute("ALTER TABLE students ADD COLUMN recovery_code_hash TEXT")
+    if not _column_exists(conn, "students", "status"):
+        conn.execute("ALTER TABLE students ADD COLUMN status TEXT DEFAULT 'active'")
+    conn.commit()
+
+    conn.execute("UPDATE teachers SET status='active' WHERE status IS NULL")
+    conn.execute("UPDATE students SET status='active' WHERE status IS NULL")
+    conn.commit()
+
+    conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('school_name','Nala Secondary School')")
+    conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('school_code','S9081')")
+    conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('school_region','Dar es Salaam')")
+    conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('school_district','')")
+    conn.commit()
+
+    admins_without_code = conn.execute(
+        "SELECT id FROM admins WHERE recovery_code_hash IS NULL").fetchall()
+    if admins_without_code:
+        code_hash = generate_password_hash(BOOTSTRAP_RECOVERY_CODE)
+        for row in admins_without_code:
+            conn.execute("UPDATE admins SET recovery_code_hash=? WHERE id=?", (code_hash, row["id"]))
+        conn.commit()
+
+
 def init_db():
     first_run = not os.path.exists(DB_PATH)
     conn = get_db()
     conn.executescript(SCHEMA)
     conn.commit()
+    _migrate(conn)
 
     if first_run:
         for i, (name, abbr, code) in enumerate(DEFAULT_SUBJECTS):
@@ -112,9 +159,14 @@ def init_db():
             conn.execute("INSERT OR IGNORE INTO fee_structure (form, amount) VALUES (?,0)", (f,))
         conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('term_label','Term II')")
         conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('academic_year','2026')")
+        conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('school_name','Nala Secondary School')")
+        conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('school_code','S9081')")
+        conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('school_region','Dar es Salaam')")
+        conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('school_district','')")
         admin_hash = generate_password_hash('admin123')
-        conn.execute("INSERT OR IGNORE INTO admins (id,name,password_hash) VALUES (?,?,?)",
-                     ('ADM-001', 'Head Teacher', admin_hash))
+        recovery_hash = generate_password_hash(BOOTSTRAP_RECOVERY_CODE)
+        conn.execute("INSERT OR IGNORE INTO admins (id,name,password_hash,recovery_code_hash) VALUES (?,?,?,?)",
+                     ('ADM-001', 'Head Teacher', admin_hash, recovery_hash))
         conn.commit()
         log(conn, 'system', 'init', 'Database created with default admin ADM-001')
     conn.close()
