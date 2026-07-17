@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Pending Approvals — Nala School Portal{% endblock %}
+{% block tabs %}{% include "_admin_tabs.html" %}{% endblock %}
+{% block content %}
+
+<div class="panel-card">
+  <h3>Pending Teacher Registrations</h3>
+  <p class="note">These teachers registered themselves through the portal's sign-up page and are waiting for you to confirm they belong here before they can log in.</p>
+  {% for t in pending_teachers %}
+  <div class="parent-list-row">
+    <div>
+      <div class="pname">{{ t['name'] }}</div>
+      <div class="pid">{{ t['id'] }} · {{ (teacher_subjects.get(t['id']) or [])|join(', ') or 'No subjects selected' }}</div>
+    </div>
+    <div class="row-actions">
+      <form method="POST" action="{{ url_for('admin_pending_approve', kind='teacher', sid=t['id']) }}" style="display:inline;">
+        <button class="btn-sm btn-gold" type="submit">Approve</button>
+      </form>
+      <form method="POST" action="{{ url_for('admin_pending_reject', kind='teacher', sid=t['id']) }}" onsubmit="return confirm('Reject and delete this registration for {{ t['name'] }}?');" style="display:inline;">
+        <button class="btn-sm btn-danger" type="submit">Reject</button>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <p class="note">No pending teacher registrations.</p>
+  {% endfor %}
+</div>
+
+<div class="panel-card">
+  <h3>Pending Student Registrations</h3>
+  <p class="note">These students registered themselves. Double-check the name and class match a real enrolled student before approving.</p>
+  {% for s in pending_students %}
+  <div class="parent-list-row">
+    <div>
+      <div class="pname">{{ s['name'] }}</div>
+      <div class="pid">{{ s['id'] }} · Form {{ s['form'] }} — {{ s['stream'] }} · {{ s['sex'] }}</div>
+    </div>
+    <div class="row-actions">
+      <form method="POST" action="{{ url_for('admin_pending_approve', kind='student', sid=s['id']) }}" style="display:inline;">
+        <button class="btn-sm btn-gold" type="submit">Approve</button>
+      </form>
+      <form method="POST" action="{{ url_for('admin_pending_reject', kind='student', sid=s['id']) }}" onsubmit="return confirm('Reject and delete this registration for {{ s['name'] }}?');" style="display:inline;">
+        <button class="btn-sm btn-danger" type="submit">Reject</button>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <p class="note">No pending student registrations.</p>
+  {% endfor %}
+</div>
+
+{% endblock %}

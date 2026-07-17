@@ -3,6 +3,14 @@
 {% block tabs %}{% include "_admin_tabs.html" %}{% endblock %}
 {% block content %}
 <div class="panel-card">
+  <h3>Your Admin Recovery Code</h3>
+  <p class="note">If you ever forget your admin password, this code is the only way back in without wiping the whole database. Every fresh install ships with one shared bootstrap code — regenerate your own personal one now and keep it somewhere safe (not on this computer).</p>
+  <form method="POST" action="{{ url_for('admin_regenerate_recovery_code') }}" onsubmit="return confirm('This replaces your current recovery code. The new one will only be shown once — make sure you can write it down immediately.');">
+    <button class="btn-sm btn-gold" type="submit">Generate My Recovery Code</button>
+  </form>
+</div>
+
+<div class="panel-card">
   <h3>Data Backup</h3>
   <p class="note">Everything lives in a real SQLite database file on the server (school.db, currently {{ (db_size/1024)|round(1) }} KB). Download it for offline backups, or restore from a previous backup.</p>
   <div class="pdf-actions" style="margin-top:0;">

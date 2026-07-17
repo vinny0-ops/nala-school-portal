@@ -3,6 +3,20 @@
 {% block tabs %}{% include "_admin_tabs.html" %}{% endblock %}
 {% block content %}
 <div class="panel-card">
+  <h3>School Information</h3>
+  <p class="note">This identifies your school on official documents — report cards, results sheets, and NECTA-format reports. The center number is the code assigned to your school (e.g. by NECTA); leave region/district blank if not applicable.</p>
+  <form method="POST" action="{{ url_for('admin_curriculum_school_info') }}">
+    <div class="grid-2">
+      <div class="field"><label>School Name</label><input type="text" name="school_name" value="{{ school_name_setting }}" placeholder="e.g. Nala Secondary School" required></div>
+      <div class="field"><label>Center Number</label><input type="text" name="school_code" value="{{ school_code_setting }}" placeholder="e.g. S9081" required></div>
+      <div class="field"><label>Region</label><input type="text" name="school_region" value="{{ school_region_setting }}" placeholder="e.g. Dar es Salaam"></div>
+      <div class="field"><label>District</label><input type="text" name="school_district" value="{{ school_district_setting }}" placeholder="e.g. Kinondoni"></div>
+    </div>
+    <button class="btn-sm btn-gold" type="submit">Save School Information</button>
+  </form>
+</div>
+
+<div class="panel-card">
   <h3>Term &amp; Academic Year</h3>
   <p class="note">Used across report cards, results sheets and NECTA-format documents.</p>
   <form method="POST" action="{{ url_for('admin_curriculum_term') }}">

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nala School Portal — Register</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="app">
+  <div class="login-screen" style="display:flex;">
+    <div class="login-wrap">
+      <div class="badge-row">
+        <div class="badge">N</div>
+        <div><h1>Nala School Portal</h1><p>Create Your Account</p></div>
+      </div>
+      <div class="card">
+
+        {% if recovery_code_shown %}
+          <h2>Registration Submitted</h2>
+          <p class="sub">Your account has been created and is now awaiting admin approval. You won't be able to sign in until an admin approves it.</p>
+          <div class="warn-banner">
+            <b>Save this recovery code somewhere safe right now.</b> You'll need it to reset your password if you ever forget it, and it will never be shown again:
+            <div class="mono" style="font-size:18px; font-weight:700; margin-top:8px; text-align:center; letter-spacing:1px;">{{ recovery_code_shown }}</div>
+          </div>
+          <a class="btn" style="display:block; text-align:center; text-decoration:none;" href="{{ url_for('login') }}">Back to Sign In</a>
+        {% else %}
+
+        <div class="role-toggle">
+          <a href="{{ url_for('self_register', role='student') }}" class="{{ 'active' if role=='student' }}" style="text-decoration:none; display:flex; align-items:center; justify-content:center;">Student</a>
+          <a href="{{ url_for('self_register', role='teacher') }}" class="{{ 'active' if role=='teacher' }}" style="text-decoration:none; display:flex; align-items:center; justify-content:center;">Teacher</a>
+        </div>
+
+        <h2>Register as a {{ 'Student' if role=='student' else 'Teacher' }}</h2>
+        <p class="sub">Your account will need admin approval before you can sign in. Choose your own ID and password now.</p>
+
+        {% if error %}<div class="error" style="display:block;">{{ error }}</div>{% endif %}
+
+        <form method="POST" action="{{ url_for('self_register') }}">
+          <input type="hidden" name="role" value="{{ role }}">
+          <div class="field">
+            <label>{{ 'Student ID' if role=='student' else 'Staff ID' }} (choose your own)</label>
+            <input type="text" name="id" placeholder="e.g. {{ 'MW-3050' if role=='student' else 'TCH-010' }}" autocomplete="off" required>
+          </div>
+          <div class="field">
+            <label>Full Name</label>
+            <input type="text" name="name" placeholder="Your full name" autocomplete="off" required>
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" name="password" placeholder="At least 4 characters" autocomplete="off" required>
+          </div>
+          <div class="field">
+            <label>Confirm Password</label>
+            <input type="password" name="confirm_password" placeholder="Repeat password" autocomplete="off" required>
+          </div>
+
+          {% if role == 'student' %}
+            <div class="grid-2">
+              <div class="field">
+                <label>Class</label>
+                <select name="form" required>
+                  <option value="">Select…</option>
+                  {% for f in forms %}<option value="{{ f['name'] }}">Form {{ f['name'] }}</option>{% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label>Sex</label>
+                <select name="sex"><option value="M">M</option><option value="F">F</option></select>
+              </div>
+            </div>
+            <div class="field">
+              <label>Stream (optional)</label>
+              <input type="text" name="stream" placeholder="e.g. Alpha">
+            </div>
+          {% else %}
+            <label>Subjects You Teach (select all that apply)</label>
+            <div class="checkbox-grid">
+              {% for s in subjects %}
+                <label class="checkbox-item"><input type="checkbox" name="subjects" value="{{ s['id'] }}"> {{ s['name'] }}</label>
+              {% endfor %}
+            </div>
+          {% endif %}
+
+          <button class="btn" type="submit">Create Account</button>
+        </form>
+        {% endif %}
+
+        <div class="demo-hint">
+          Already have an account? <a href="{{ url_for('login', role=role) }}">Sign in instead</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
