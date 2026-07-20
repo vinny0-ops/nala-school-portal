@@ -1,7 +1,8 @@
 
   :root{
-    --chalk:#1F3A2E; --chalk-dark:#142720; --cream:#F1ECDD; --cream-2:#E8E1CC;
-    --maroon:#7A2E2E; --gold:#C9A227; --teal:#3A6B62; --ink:#2A2A22; --line:rgba(31,58,46,0.18);
+    --chalk:#163A5C; --chalk-dark:#0C2338; --cream:#F0F4F9; --cream-2:#DCE7F2;
+    --maroon:#1F5C99; --gold:#C9A227; --teal:#1F7A8C; --ink:#20303F; --line:rgba(22,58,92,0.18);
+    --danger:#C0392B;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
   body{
@@ -49,9 +50,9 @@
   .btn-sm{ padding:8px 14px; font-size:12.5px; border-radius:3px; border:none; background:var(--chalk); color:var(--cream); font-weight:600; width:auto; }
   .btn-sm:disabled{ opacity:0.45; cursor:not-allowed; }
   .btn-outline{ background:transparent; border:1px solid var(--line); color:var(--chalk); }
-  .btn-danger{ background:transparent; border:1px solid rgba(122,46,46,0.4); color:var(--maroon); }
+  .btn-danger{ background:transparent; border:1px solid rgba(192,57,43,0.4); color:var(--danger); }
   .btn-gold{ background:var(--gold); color:var(--chalk-dark); }
-  .error{ background:#fbe9e7; border:1px solid #e0a99f; color:var(--maroon); font-size:13px; padding:9px 12px; border-radius:3px; margin-bottom:14px; display:none; }
+  .error{ background:#fbe9e7; border:1px solid #e0a99f; color:var(--danger); font-size:13px; padding:9px 12px; border-radius:3px; margin-bottom:14px; display:none; }
   .demo-hint{ margin-top:18px; padding-top:14px; border-top:1px dashed var(--line); font-size:11.5px; color:#7a7a6b; line-height:1.7; }
   .demo-hint b{ color:var(--chalk); }
 
@@ -100,7 +101,7 @@
   .grade{ display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%;
     font-weight:600; font-size:11px; color:#fff; }
   .g-A{ background:var(--teal); } .g-B{ background:#5c8a68; } .g-C{ background:var(--gold); color:var(--chalk-dark); }
-  .g-D{ background:#c17a3f; } .g-F{ background:var(--maroon); }
+  .g-D{ background:#c17a3f; } .g-F{ background:var(--danger); }
   .score-input{ width:56px; padding:6px 7px; border:1.5px solid var(--line); border-radius:3px; text-align:center; }
   .table-scroll{ overflow-x:auto; }
   .pos-badge{ font-family:'Fraunces',serif; font-weight:700; color:var(--maroon); }
@@ -129,7 +130,7 @@
 
   .division-pill{ display:inline-block; padding:3px 10px; border-radius:12px; background:var(--teal); color:#fff; font-size:11px; font-weight:600; }
   .fee-pill{ display:inline-block; padding:3px 10px; border-radius:12px; color:#fff; font-size:11px; font-weight:600; }
-  .fee-paid{ background:var(--teal); } .fee-partial{ background:var(--gold); color:var(--chalk-dark); } .fee-unpaid{ background:var(--maroon); }
+  .fee-paid{ background:var(--teal); } .fee-partial{ background:var(--gold); color:var(--chalk-dark); } .fee-unpaid{ background:var(--danger); }
   .footer-strip{ display:flex; justify-content:space-between; align-items:center; padding:18px 0 4px; margin-top:16px; border-top:1px dashed var(--line); }
   .stamp{ width:64px; height:64px; border-radius:50%; border:2.5px dashed var(--maroon); color:var(--maroon);
     display:flex; align-items:center; justify-content:center; text-align:center; font-family:'Fraunces',serif;
@@ -154,7 +155,7 @@
   .search-box{ margin-bottom:16px; }
   .chip-list{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
   .chip{ display:flex; align-items:center; gap:6px; background:#fff; border:1.5px solid var(--line); border-radius:14px; padding:5px 6px 5px 12px; font-size:12.5px; }
-  .chip button{ background:transparent; border:none; color:var(--maroon); font-weight:700; padding:2px 6px; }
+  .chip button{ background:transparent; border:none; color:var(--danger); font-weight:700; padding:2px 6px; }
   .log-row{ font-size:12px; padding:8px 0; border-bottom:1px solid var(--line); color:#4a4a3e; }
   .log-row .t{ color:#8a8a78; font-size:10.5px; }
   .chart-wrap{ position:relative; height:260px; margin-top:8px; }
