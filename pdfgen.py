@@ -6,11 +6,11 @@ from reportlab.platypus import (SimpleDocTemplate, Table, TableStyle, Paragraph,
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_RIGHT, TA_CENTER
 
-CHALK = colors.HexColor("#1F3A2E")
+CHALK = colors.HexColor("#163A5C")
 GOLD = colors.HexColor("#C9A227")
-CREAM = colors.HexColor("#F1ECDD")
-MAROON = colors.HexColor("#7A2E2E")
-TEAL = colors.HexColor("#3A6B62")
+CREAM = colors.HexColor("#F0F4F9")
+MAROON = colors.HexColor("#1F5C99")
+TEAL = colors.HexColor("#1F7A8C")
 
 styles = getSampleStyleSheet()
 title_style = ParagraphStyle('title', parent=styles['Heading1'], textColor=colors.white, fontSize=16)
