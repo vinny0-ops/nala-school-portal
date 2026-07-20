@@ -32,7 +32,7 @@
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           {% for category, message in messages %}
-            <div class="panel-card" style="border-left:4px solid {{ '#7A2E2E' if category=='error' else '#3A6B62' }}; margin-bottom:14px;">
+            <div class="panel-card" style="border-left:4px solid {{ '#C0392B' if category=='error' else '#1F5C99' }}; margin-bottom:14px;">
               <p style="font-size:13.5px; color:var(--chalk);">{{ message }}</p>
             </div>
           {% endfor %}

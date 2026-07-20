@@ -54,8 +54,6 @@
             Don't have login details? <a href="{{ url_for('self_register', role='student') }}">Register here</a> — your admin will need to approve it.
           {% elif role == 'teacher' %}
             Don't have login details? <a href="{{ url_for('self_register', role='teacher') }}">Register here</a> — your admin will need to approve it.
-          {% else %}
-            First time here? Use <b>ADM-001</b> / <b>admin123</b>, then change the password immediately under Manage Staff.
           {% endif %}
           <br><a href="{{ url_for('forgot_password', role=role) }}">Forgot your password?</a>
         </div>

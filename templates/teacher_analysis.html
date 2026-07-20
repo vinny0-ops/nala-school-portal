@@ -37,7 +37,7 @@
 </div>
 <div class="panel-card">
   <h3>Grade Distribution</h3>
-  {% set colors = {'A':'#3A6B62','B':'#5c8a68','C':'#C9A227','D':'#c17a3f','F':'#7A2E2E'} %}
+  {% set colors = {'A':'#1F7A8C','B':'#5c8a68','C':'#C9A227','D':'#c17a3f','F':'#C0392B'} %}
   {% for letter, cnt in dist.items() %}
   <div class="bar-row"><div class="bar-label">Grade {{ letter }}</div>
     <div class="bar-track"><div class="bar-fill" style="width:{{ (cnt/count*100) if count else 0 }}%; background:{{ colors[letter] }}"></div></div>

@@ -20,7 +20,7 @@
 new Chart(document.getElementById('progressChart'), {
   type: 'line',
   data: { labels: {{ labels|tojson }}, datasets: [{ label: {{ series_label|tojson }},
-    data: {{ data|tojson }}, borderColor:'#3A6B62', backgroundColor:'rgba(58,107,98,0.15)', tension:0.3, fill:true, pointRadius:4 }] },
+    data: {{ data|tojson }}, borderColor:'#1F5C99', backgroundColor:'rgba(31,92,153,0.15)', tension:0.3, fill:true, pointRadius:4 }] },
   options: { scales:{ y:{ min:0, max:100 } }, plugins:{ legend:{ display:false } } }
 });
 </script>
