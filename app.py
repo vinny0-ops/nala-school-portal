@@ -80,6 +80,29 @@ def class_sheet(conn, form, exam_type, subjects):
     return rows
 
 
+def full_term_rank(conn, form, subjects):
+    """Ranks students by the same TEST+MIDTERM+EXAM -> FINAL average used on the
+    full report card (see build_full_report_card), so the position shown on a
+    student's report matches how the whole class was ranked."""
+    students = conn.execute("SELECT * FROM students WHERE form=? ORDER BY name", (form,)).fetchall()
+    rows = []
+    for st in students:
+        total = 0.0
+        for s in subjects:
+            res = conn.execute("SELECT exam_type, score FROM results WHERE student_id=? AND subject_id=?",
+                               (st['id'], s['id'])).fetchall()
+            by_exam = {r['exam_type']: r['score'] for r in res}
+            components = [v for v in (by_exam.get('Test 1', 0), by_exam.get('Midterm', 0),
+                                      by_exam.get('Terminal/Annual', 0)) if v and v > 0]
+            total += sum(components) / len(components) if components else 0
+        avg = total / len(subjects) if subjects else 0
+        rows.append({"id": st['id'], "avg": avg})
+    rows.sort(key=lambda r: -r['avg'])
+    for i, r in enumerate(rows):
+        r['position'] = i + 1
+    return rows
+
+
 def subject_ranking(conn, form, exam_type, subject_id):
     students = conn.execute("SELECT * FROM students WHERE form=? ORDER BY name", (form,)).fetchall()
     rows = []
@@ -203,6 +226,15 @@ def login():
             return render_template('login.html', role=role,
                 error="Your account is registered but still awaiting admin approval. Check back soon.")
 
+        if record and record['password_hash'] == '':
+            # Bulk-registered account with no password set yet — skip the password
+            # check entirely and send them straight to first-time password setup.
+            conn.execute("DELETE FROM login_attempts WHERE key=?", (key,))
+            conn.commit()
+            conn.close()
+            session['first_login_pending'] = {'role': role, 'id': uid}
+            return redirect(url_for('set_first_password'))
+
         if record and check_password_hash(record['password_hash'], pwd):
             conn.execute("DELETE FROM login_attempts WHERE key=?", (key,))
             conn.commit()
@@ -236,6 +268,82 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+
+@app.route('/account/set-first-password', methods=['GET', 'POST'])
+def set_first_password():
+    pending = session.get('first_login_pending')
+    if not pending:
+        return redirect(url_for('login'))
+
+    role, uid = pending['role'], pending['id']
+    table = {'student': 'students', 'teacher': 'teachers', 'admin': 'admins'}[role]
+    error = None
+
+    conn = db.get_db()
+    record = conn.execute(f"SELECT * FROM {table} WHERE id=?", (uid,)).fetchone()
+    if not record or record['password_hash'] != '':
+        # Account no longer exists, or already has a password (e.g. set from another
+        # tab) — nothing left to do here.
+        conn.close()
+        session.pop('first_login_pending', None)
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        new_pw = request.form.get('new_password', '')
+        confirm_pw = request.form.get('confirm_password', '')
+        if len(new_pw) < 4:
+            error = "Password must be at least 4 characters."
+        elif new_pw != confirm_pw:
+            error = "Password and confirmation don't match."
+        else:
+            conn.execute(f"UPDATE {table} SET password_hash=? WHERE id=?",
+                         (generate_password_hash(new_pw), uid))
+            conn.commit()
+            db.log(conn, f"{role}:{uid}", "first_password_set", f"{role} {uid} set their password on first login")
+            session.pop('first_login_pending', None)
+            session.permanent = True
+            session['role'] = role
+            session['id'] = uid
+            session['name'] = record['name']
+            conn.close()
+            return redirect(url_for('dashboard'))
+
+    conn.close()
+    return render_template('set_first_password.html', name=record['name'], error=error)
+
+
+@app.route('/account/change-password', methods=['GET', 'POST'])
+@login_required('student', 'teacher', 'admin')
+def change_password():
+    user = current_user()
+    table = {'student': 'students', 'teacher': 'teachers', 'admin': 'admins'}[user['role']]
+    error = None
+    success = None
+
+    if request.method == 'POST':
+        current_pw = request.form.get('current_password', '')
+        new_pw = request.form.get('new_password', '')
+        confirm_pw = request.form.get('confirm_password', '')
+
+        conn = db.get_db()
+        record = conn.execute(f"SELECT * FROM {table} WHERE id=?", (user['id'],)).fetchone()
+
+        if not check_password_hash(record['password_hash'], current_pw):
+            error = "Your current password is incorrect."
+        elif len(new_pw) < 4:
+            error = "New password must be at least 4 characters."
+        elif new_pw != confirm_pw:
+            error = "New password and confirmation don't match."
+        else:
+            conn.execute(f"UPDATE {table} SET password_hash=? WHERE id=?",
+                         (generate_password_hash(new_pw), user['id']))
+            conn.commit()
+            db.log(conn, f"{user['role']}:{user['id']}", "password_changed", "Changed their own password")
+            success = "Your password has been changed."
+        conn.close()
+
+    return render_template('change_password.html', error=error, success=success)
 
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
@@ -656,6 +764,63 @@ def parent_report_pdf(sid):
     return send_file(buf, download_name=fname, as_attachment=True, mimetype='application/pdf')
 
 
+@app.route('/full-report/<sid>.pdf')
+@login_required('student', 'teacher', 'admin')
+def full_report_pdf(sid):
+    user = current_user()
+    if user['role'] == 'student' and user['id'] != sid:
+        abort(403)
+    conn = db.get_db()
+    student = conn.execute("SELECT * FROM students WHERE id=?", (sid,)).fetchone()
+    if not student:
+        conn.close()
+        abort(404)
+    subjects = db.get_subjects(conn)
+    rank = full_term_rank(conn, student['form'], subjects)
+    my_rank = next(r for r in rank if r['id'] == sid)
+    term_label = db.get_setting(conn, 'term_label', 'Term II')
+    academic_year = db.get_setting(conn, 'academic_year', '2026')
+    school_name = db.get_setting(conn, 'school_name', 'Nala Secondary School')
+    school_code = db.get_setting(conn, 'school_code', 'S9081')
+    school_region = db.get_setting(conn, 'school_region', '')
+    school_district = db.get_setting(conn, 'school_district', '')
+    settings = {k: db.get_setting(conn, k, '') for k in
+               ('phone', 'email', 'pobox', 'head_teacher_name', 'term_close_date', 'term_open_date', 'items_to_bring')}
+    remarks = db.get_remarks(conn, sid)
+    conn.close()
+    from pdfgen import build_full_report_card
+    buf = build_full_report_card(student, subjects, term_label, academic_year, school_name, school_code,
+                                 school_region, school_district, remarks, settings,
+                                 my_rank['position'], len(rank))
+    fname = f"FullReport_{student['name'].replace(' ','_')}_{term_label.replace('/','-')}.pdf"
+    return send_file(buf, download_name=fname, as_attachment=True, mimetype='application/pdf')
+
+
+@app.route('/remarks/<sid>', methods=['GET', 'POST'])
+@login_required('teacher', 'admin')
+def edit_remarks(sid):
+    conn = db.get_db()
+    student = conn.execute("SELECT * FROM students WHERE id=?", (sid,)).fetchone()
+    if not student:
+        conn.close()
+        abort(404)
+    if request.method == 'POST':
+        db.set_remarks(conn, sid,
+                       request.form.get('behaviour', '').strip(),
+                       request.form.get('attendance', '').strip(),
+                       request.form.get('class_teacher_name', '').strip(),
+                       request.form.get('class_teacher_comment', '').strip(),
+                       request.form.get('head_teacher_comment', '').strip())
+        db.log(conn, f"{session['role']}:{session['id']}", "remarks_edit",
+               f"Updated report remarks for {student['name']} ({sid})")
+        conn.close()
+        flash("Remarks saved.", "success")
+        return redirect(url_for('edit_remarks', sid=sid))
+    remarks = db.get_remarks(conn, sid)
+    conn.close()
+    return render_template('edit_remarks.html', student=student, remarks=remarks)
+
+
 # ==================== ADMIN ====================
 def admin_state():
     forms = None
@@ -863,29 +1028,24 @@ def admin_student_delete(sid):
 
 
 # ---- Register students (CSV upload / paste) ----
-def parse_student_rows(text, forms_list):
+def parse_student_rows(text):
     lines = [l.strip() for l in text.splitlines() if l.strip()]
     valid, errors = [], []
     seen = set()
     for idx, line in enumerate(lines):
         delim = '\t' if '\t' in line else ','
         fields = [f.strip() for f in line.split(delim)]
-        if idx == 0 and fields[0].lower() in ('id', 'studentid', 'student id'):
+        if idx == 0 and fields[0].lower() in ('id', 'studentid', 'student id', 'index', 'indexnumber', 'index number'):
             continue
-        while len(fields) < 9: fields.append('')
-        sid, pwd, name, form_raw, stream, sex_raw, pname, pphone, pemail = fields[:9]
+        while len(fields) < 2: fields.append('')
+        sid, name = fields[0], fields[1]
         line_no = idx + 1
-        if not sid or not pwd or not name:
-            errors.append((line_no, f'Missing ID, password, or name ("{line}")')); continue
-        form = form_raw.upper()
-        if form not in forms_list:
-            errors.append((line_no, f'"{sid}" — invalid Form "{form_raw}" (expected {"/".join(forms_list)})')); continue
+        if not sid or not name:
+            errors.append((line_no, f'Missing index number or name ("{line}")')); continue
         if sid in seen:
             errors.append((line_no, f'"{sid}" — duplicate in this batch')); continue
         seen.add(sid)
-        sex = 'F' if sex_raw.upper() == 'F' else 'M'
-        valid.append({"id": sid, "password": pwd, "name": name, "form": form, "stream": stream or 'A',
-                      "sex": sex, "parent_name": pname, "parent_phone": pphone, "parent_email": pemail})
+        valid.append({"id": sid, "name": name})
     return valid, errors
 
 
@@ -897,13 +1057,20 @@ def admin_register():
     forms_list = [f['name'] for f in forms]
     preview, errors = None, None
     action = request.form.get('action') if request.method == 'POST' else None
+    batch_form = request.form.get('batch_form', forms_list[0] if forms_list else '')
+    batch_stream = request.form.get('batch_stream', 'A').strip() or 'A'
+    batch_sex = request.form.get('batch_sex', 'M')
 
     if request.method == 'POST':
         text = request.form.get('rows_text', '')
         if 'file' in request.files and request.files['file'].filename:
             text = request.files['file'].read().decode('utf-8', errors='ignore')
 
-        valid, errs = parse_student_rows(text, forms_list)
+        valid, errs = parse_student_rows(text)
+        if batch_form not in forms_list:
+            errs.insert(0, (0, f'Please choose a valid class for this batch (expected {"/".join(forms_list)})'))
+            valid = []
+
         existing_ids = {r['id'] for r in conn.execute("SELECT id FROM students").fetchall()}
         existing_ids |= {r['id'] for r in conn.execute("SELECT id FROM teachers").fetchall()}
         existing_ids |= {r['id'] for r in conn.execute("SELECT id FROM admins").fetchall()}
@@ -912,20 +1079,28 @@ def admin_register():
             if v['id'] in existing_ids:
                 errs.append((0, f'"{v["id"]}" already exists as a user'))
             else:
+                v['form'] = batch_form
+                v['stream'] = batch_stream
+                v['sex'] = batch_sex if batch_sex in ('M', 'F') else 'M'
                 final_valid.append(v)
 
         if action == 'confirm':
             added = 0
             for v in final_valid:
-                conn.execute("""INSERT INTO students (id,name,password_hash,form,stream,sex,parent_name,parent_phone,parent_email)
-                              VALUES (?,?,?,?,?,?,?,?,?)""",
-                            (v['id'], v['name'], generate_password_hash(v['password']), v['form'], v['stream'],
-                             v['sex'], v['parent_name'], v['parent_phone'], v['parent_email']))
+                # No password is set here — the student creates their own the first
+                # time they log in using just their index number (see set_first_password).
+                conn.execute("""INSERT INTO students (id,name,password_hash,form,stream,sex,
+                              parent_name,parent_phone,parent_email) VALUES (?,?,?,?,?,?,?,?,?)""",
+                            (v['id'], v['name'], '', v['form'], v['stream'],
+                             v['sex'], '', '', ''))
                 added += 1
             conn.commit()
-            db.log(conn, f"admin:{session['id']}", "bulk_register", f"Registered {added} student(s)")
+            db.log(conn, f"admin:{session['id']}", "bulk_register",
+                   f"Registered {added} student(s) into Form {batch_form}")
             conn.close()
-            flash(f"{added} student(s) registered successfully.", "success")
+            flash(f"{added} student(s) registered into Form {batch_form}. "
+                  f"They can log in with just their index number — they'll be asked to "
+                  f"create their own password the first time.", "success")
             return redirect(url_for('admin_register'))
         else:
             preview, errors = final_valid, errs
@@ -933,17 +1108,133 @@ def admin_register():
 
     conn.close()
     return render_template('admin_register.html', forms_list=forms_list, preview=preview, errors=errors,
-                           rows_text=request.form.get('rows_text', ''))
+                           rows_text=request.form.get('rows_text', ''), batch_form=batch_form,
+                           batch_stream=batch_stream, batch_sex=batch_sex)
 
 
 @app.route('/admin/register/template.csv')
 @login_required('admin')
 def admin_register_template():
-    csv_text = "ID,Password,FullName,Form,Stream,Sex,ParentName,ParentPhone,ParentEmail\n" \
-               "MW-3001,pass123,Juma Ally,I,Alpha,M,Mama Juma,0712345678,\n" \
-               "MW-3002,pass456,Zawadi Kombe,II,Beta,F,Baba Zawadi,0765432109,zawadi.parent@example.com\n"
+    csv_text = "IndexNumber,Name\nMW-3001,Juma Ally\nMW-3002,Zawadi Kombe\n"
     buf = io.BytesIO(csv_text.encode())
     return send_file(buf, download_name='student_registration_template.csv', as_attachment=True, mimetype='text/csv')
+
+
+def parse_bulk_marks(text, subjects):
+    lines = [l.strip('\n\r') for l in text.splitlines() if l.strip()]
+    subj_count = len(subjects)
+    rows, row_errors = [], []
+    for idx, line in enumerate(lines):
+        delim = '\t' if '\t' in line else ','
+        fields = [f.strip() for f in line.split(delim)]
+        if idx == 0 and fields[0].lower() in ('id', 'indexnumber', 'index number', 'index'):
+            continue
+        sid = fields[0]
+        if not sid:
+            continue
+        score_fields = fields[1:1 + subj_count]
+        scores = []
+        cell_errors = []
+        for i, s in enumerate(subjects):
+            raw = score_fields[i] if i < len(score_fields) else ''
+            raw = raw.strip()
+            if raw == '':
+                scores.append(None)
+                continue
+            try:
+                val = int(float(raw))
+                if val < 0 or val > 100:
+                    cell_errors.append(f"{s['name']}: '{raw}' out of range (0-100), skipped")
+                    scores.append(None)
+                else:
+                    scores.append(val)
+            except ValueError:
+                cell_errors.append(f"{s['name']}: '{raw}' is not a number, skipped")
+                scores.append(None)
+        rows.append({"id": sid, "scores": scores, "cell_errors": cell_errors})
+    return rows, row_errors
+
+
+@app.route('/admin/bulk-marks', methods=['GET', 'POST'])
+@login_required('admin')
+def admin_bulk_marks():
+    conn = db.get_db()
+    forms = db.get_forms(conn)
+    forms_list = [f['name'] for f in forms]
+    subjects = db.get_subjects(conn)
+    exam_types = db.EXAM_TYPES
+    form = request.values.get('form', forms_list[0] if forms_list else '')
+    exam = request.values.get('exam', exam_types[-1])
+    preview = None
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+        text = request.form.get('rows_text', '')
+        if 'file' in request.files and request.files['file'].filename:
+            text = request.files['file'].read().decode('utf-8', errors='ignore')
+
+        roster = {st['id']: st for st in conn.execute("SELECT * FROM students WHERE form=?", (form,)).fetchall()}
+        rows, _ = parse_bulk_marks(text, subjects)
+
+        matched, unknown = [], []
+        for r in rows:
+            if r['id'] in roster:
+                r['name'] = roster[r['id']]['name']
+                matched.append(r)
+            else:
+                unknown.append(r['id'])
+
+        if action == 'confirm':
+            saved_students = 0
+            saved_cells = 0
+            for r in matched:
+                any_score = False
+                for i, s in enumerate(subjects):
+                    val = r['scores'][i]
+                    if val is not None:
+                        conn.execute("""INSERT INTO results (student_id, exam_type, subject_id, score)
+                                      VALUES (?,?,?,?)
+                                      ON CONFLICT(student_id, exam_type, subject_id) DO UPDATE SET score=excluded.score""",
+                                    (r['id'], exam, s['id'], val))
+                        saved_cells += 1
+                        any_score = True
+                if any_score:
+                    saved_students += 1
+            conn.commit()
+            db.log(conn, f"admin:{session['id']}", "bulk_marks",
+                   f"Bulk-uploaded marks for {saved_students} student(s), {saved_cells} score(s), "
+                   f"Form {form}, {exam}")
+            conn.close()
+            flash(f"Saved {saved_cells} score(s) across {saved_students} student(s) for Form {form}, {exam}.",
+                  "success")
+            return redirect(url_for('admin_bulk_marks', form=form, exam=exam))
+        else:
+            preview = {"matched": matched, "unknown": unknown, "rows_text": text}
+
+    conn.close()
+    return render_template('admin_bulk_marks.html', forms_list=forms_list, exam_types=exam_types,
+                           subjects=subjects, form=form, exam=exam, preview=preview)
+
+
+@app.route('/admin/bulk-marks/template.csv')
+@login_required('admin')
+def admin_bulk_marks_template():
+    conn = db.get_db()
+    form = request.args.get('form', '')
+    subjects = db.get_subjects(conn)
+    roster = conn.execute("SELECT * FROM students WHERE form=? ORDER BY name", (form,)).fetchall() if form else []
+    conn.close()
+    header = "IndexNumber," + ",".join(s['name'] for s in subjects)
+    lines = [header]
+    if roster:
+        for st in roster:
+            lines.append(st['id'] + "," + ",".join([""] * len(subjects)))
+    else:
+        lines.append("MW-1001," + ",".join([""] * len(subjects)))
+    csv_text = "\n".join(lines) + "\n"
+    buf = io.BytesIO(csv_text.encode())
+    fname = f"bulk_marks_template_Form{form or 'X'}.csv"
+    return send_file(buf, download_name=fname, as_attachment=True, mimetype='text/csv')
 
 
 # ---- Pending self-registration approvals ----
@@ -1116,12 +1407,22 @@ def admin_curriculum():
     school_code = db.get_setting(conn, 'school_code', 'S9081')
     school_region = db.get_setting(conn, 'school_region', '')
     school_district = db.get_setting(conn, 'school_district', '')
+    phone = db.get_setting(conn, 'phone', '')
+    email = db.get_setting(conn, 'email', '')
+    pobox = db.get_setting(conn, 'pobox', '')
+    head_teacher_name = db.get_setting(conn, 'head_teacher_name', '')
+    term_close_date = db.get_setting(conn, 'term_close_date', '')
+    term_open_date = db.get_setting(conn, 'term_open_date', '')
+    items_to_bring = db.get_setting(conn, 'items_to_bring', '')
     forms = db.get_forms(conn)
     subjects = db.get_subjects(conn)
     conn.close()
     return render_template('admin_curriculum.html', term_label=term_label, academic_year=academic_year,
                            school_name_setting=school_name, school_code_setting=school_code,
                            school_region_setting=school_region, school_district_setting=school_district,
+                           phone_setting=phone, email_setting=email, pobox_setting=pobox,
+                           head_teacher_name_setting=head_teacher_name, term_close_date_setting=term_close_date,
+                           term_open_date_setting=term_open_date, items_to_bring_setting=items_to_bring,
                            forms=forms, subjects=subjects)
 
 
@@ -1155,6 +1456,19 @@ def admin_curriculum_school_info():
            f"Updated school identity: {name or '(unchanged)'} / {code or '(unchanged)'} / {region} / {district}")
     conn.close()
     flash("School information saved.", "success")
+    return redirect(url_for('admin_curriculum'))
+
+
+@app.route('/admin/curriculum/report-card-info', methods=['POST'])
+@login_required('admin')
+def admin_curriculum_report_card_info():
+    conn = db.get_db()
+    for key in ('phone', 'email', 'pobox', 'head_teacher_name', 'term_close_date', 'term_open_date'):
+        db.set_setting(conn, key, request.form.get(key, '').strip())
+    db.set_setting(conn, 'items_to_bring', request.form.get('items_to_bring', '').strip())
+    db.log(conn, f"admin:{session['id']}", "report_card_info_edit", "Updated report card contact/instructions info")
+    conn.close()
+    flash("Report card information saved.", "success")
     return redirect(url_for('admin_curriculum'))
 
 

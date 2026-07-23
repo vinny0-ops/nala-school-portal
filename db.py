@@ -81,6 +81,14 @@ CREATE TABLE IF NOT EXISTS settings (
 CREATE TABLE IF NOT EXISTS login_attempts (
   key TEXT PRIMARY KEY, count INTEGER DEFAULT 0, locked_until TEXT
 );
+CREATE TABLE IF NOT EXISTS report_remarks (
+  student_id TEXT PRIMARY KEY,
+  behaviour TEXT DEFAULT '',
+  attendance TEXT DEFAULT '',
+  class_teacher_name TEXT DEFAULT '',
+  class_teacher_comment TEXT DEFAULT '',
+  head_teacher_comment TEXT DEFAULT ''
+);
 """
 
 DEFAULT_SUBJECTS = [
@@ -131,6 +139,13 @@ def _migrate(conn):
     conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('school_code','S9081')")
     conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('school_region','Dar es Salaam')")
     conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('school_district','')")
+    conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('phone','')")
+    conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('email','')")
+    conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('pobox','')")
+    conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('head_teacher_name','')")
+    conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('term_close_date','')")
+    conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('term_open_date','')")
+    conn.execute("INSERT OR IGNORE INTO settings (key,value) VALUES ('items_to_bring','School uniform\\nExercise books and stationery\\nAll learning materials')")
     conn.commit()
 
     admins_without_code = conn.execute(
@@ -196,3 +211,25 @@ def get_subjects(conn):
 
 def get_forms(conn):
     return conn.execute("SELECT * FROM forms ORDER BY sort_order").fetchall()
+
+
+def get_remarks(conn, student_id):
+    row = conn.execute("SELECT * FROM report_remarks WHERE student_id=?", (student_id,)).fetchone()
+    if row:
+        return dict(row)
+    return {"student_id": student_id, "behaviour": "", "attendance": "", "class_teacher_name": "",
+            "class_teacher_comment": "", "head_teacher_comment": ""}
+
+
+def set_remarks(conn, student_id, behaviour, attendance, class_teacher_name, class_teacher_comment,
+                 head_teacher_comment):
+    conn.execute("""INSERT INTO report_remarks
+                   (student_id, behaviour, attendance, class_teacher_name, class_teacher_comment, head_teacher_comment)
+                   VALUES (?,?,?,?,?,?)
+                   ON CONFLICT(student_id) DO UPDATE SET
+                     behaviour=excluded.behaviour, attendance=excluded.attendance,
+                     class_teacher_name=excluded.class_teacher_name,
+                     class_teacher_comment=excluded.class_teacher_comment,
+                     head_teacher_comment=excluded.head_teacher_comment""",
+                (student_id, behaviour, attendance, class_teacher_name, class_teacher_comment, head_teacher_comment))
+    conn.commit()
