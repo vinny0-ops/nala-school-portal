@@ -29,6 +29,26 @@
 </div>
 
 <div class="panel-card">
+  <h3>Full Report Card Details</h3>
+  <p class="note">Used only on the "Full Term Report" (government-style continuous assessment report card) — contact details, head teacher name, term dates, and what students should bring back to school.</p>
+  <form method="POST" action="{{ url_for('admin_curriculum_report_card_info') }}">
+    <div class="grid-2">
+      <div class="field"><label>Phone</label><input type="text" name="phone" value="{{ phone_setting }}" placeholder="e.g. 0715975553"></div>
+      <div class="field"><label>Email</label><input type="text" name="email" value="{{ email_setting }}" placeholder="e.g. school@example.com"></div>
+      <div class="field"><label>P.O. Box</label><input type="text" name="pobox" value="{{ pobox_setting }}" placeholder="e.g. 84"></div>
+      <div class="field"><label>Head of School Name</label><input type="text" name="head_teacher_name" value="{{ head_teacher_name_setting }}" placeholder="e.g. Riward Mbwambo"></div>
+      <div class="field"><label>Term Closing Date</label><input type="text" name="term_close_date" value="{{ term_close_date_setting }}" placeholder="e.g. June 06, 2026"></div>
+      <div class="field"><label>Term Opening Date</label><input type="text" name="term_open_date" value="{{ term_open_date_setting }}" placeholder="e.g. July 08, 2026"></div>
+    </div>
+    <div class="field">
+      <label>Items Students Should Bring Back (one per line)</label>
+      <textarea name="items_to_bring" style="width:100%; min-height:80px; padding:10px 12px; border:1.5px solid var(--line); border-radius:3px; font-family:'IBM Plex Mono',monospace; font-size:12.5px;">{{ items_to_bring_setting }}</textarea>
+    </div>
+    <button class="btn-sm btn-gold" type="submit">Save Report Card Details</button>
+  </form>
+</div>
+
+<div class="panel-card">
   <h3>Class Levels</h3>
   <div class="chip-list">
     {% for f in forms %}

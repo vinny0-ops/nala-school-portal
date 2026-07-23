@@ -35,7 +35,7 @@
 </div>
 
 <div class="panel-card">
-  <h3 style="color:var(--maroon)">Danger Zone</h3>
+  <h3 style="color:var(--danger)">Danger Zone</h3>
   <p class="note">This erases every student, teacher, admin, announcement, fee record, and curriculum setting. This cannot be undone. Type <b>ERASE</b> below to confirm.</p>
   <form method="POST" action="{{ url_for('admin_reset_all') }}" onsubmit="return confirm('This permanently erases ALL school data. Are you absolutely sure?');">
     <div class="field" style="max-width:220px;"><input type="text" name="confirm" placeholder="Type ERASE"></div>

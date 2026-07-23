@@ -4,23 +4,44 @@
 {% block content %}
 <div class="panel-card">
   <h3>Register Students</h3>
-  <p class="note">Paste rows or upload a CSV/TSV file exported from Excel or Google Sheets. One student per line, comma or tab separated, in this order:</p>
-  <p class="note mono" style="background:var(--cream-2); padding:8px 10px; border-radius:3px;">ID, Password, Full Name, Form ({{ forms_list|join('/') }}), Stream, Sex (M/F), ParentName, ParentPhone, ParentEmail</p>
-  <p class="note">Example: <span class="mono">MW-3001, pass123, Juma Ally, I, Alpha, M, Mama Juma, 0712345678, </span> — a header row is fine and will be skipped automatically. Stream, Sex, and parent fields are optional.</p>
+  <p class="note">Paste rows or upload a CSV/TSV file exported from Excel. One student per line, comma or tab separated, with just two columns:</p>
+  <p class="note mono" style="background:var(--cream-2); padding:8px 10px; border-radius:3px;">Index Number, Name</p>
+  <p class="note">Example: <span class="mono">MW-3001, Juma Ally</span> — a header row is fine and will be skipped automatically. All students in one upload are registered into the same class below; edit any student individually afterward if some need a different stream or sex.</p>
+  <p class="note">Each student's starting password is their own index number — remind them to change it after their first login using "Change Password" in their account menu.</p>
 
   <div class="pdf-actions" style="margin-top:0; margin-bottom:14px;">
     <a class="btn-sm btn-outline" style="text-decoration:none;" href="{{ url_for('admin_register_template') }}">Download CSV Template</a>
   </div>
 
-  <form method="POST" enctype="multipart/form-data">
+  <form method="POST" enctype="multipart/form-data" id="regForm">
+    <div class="grid-2">
+      <div class="field">
+        <label>Class (Form)</label>
+        <select name="batch_form">
+          {% for f in forms_list %}<option value="{{ f }}" {{ 'selected' if f==batch_form }}>Form {{ f }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label>Stream</label>
+        <input type="text" name="batch_stream" value="{{ batch_stream }}" placeholder="e.g. Alpha">
+      </div>
+      <div class="field">
+        <label>Sex (applies to whole batch — edit individually after if mixed)</label>
+        <select name="batch_sex">
+          <option value="M" {{ 'selected' if batch_sex=='M' }}>M</option>
+          <option value="F" {{ 'selected' if batch_sex=='F' }}>F</option>
+        </select>
+      </div>
+    </div>
+
     <label class="btn-sm btn-outline" style="display:inline-flex; align-items:center; margin-bottom:14px;">
       Choose File to Upload (CSV/TSV)
-      <input type="file" name="file" accept=".csv,.txt,.tsv" style="display:none;" onchange="this.form.querySelector('[name=action]').value='preview'; this.form.submit();">
+      <input type="file" name="file" accept=".csv,.txt,.tsv" style="display:none;" onchange="document.getElementById('regAction').value='preview'; this.form.submit();">
     </label>
-    <textarea name="rows_text" placeholder="...or paste student rows here" style="width:100%; min-height:120px; padding:10px 12px; border:1.5px solid var(--line); border-radius:3px; font-family:'IBM Plex Mono',monospace; font-size:12.5px;">{{ rows_text }}</textarea>
-    <input type="hidden" name="action" value="preview">
+    <textarea name="rows_text" placeholder="...or paste student rows here (Index Number, Name)" style="width:100%; min-height:120px; padding:10px 12px; border:1.5px solid var(--line); border-radius:3px; font-family:'IBM Plex Mono',monospace; font-size:12.5px;">{{ rows_text }}</textarea>
+    <input type="hidden" name="action" value="preview" id="regAction">
     <div class="pdf-actions">
-      <button class="btn-sm" type="submit" onclick="this.form.action.value='preview'">Preview</button>
+      <button class="btn-sm" type="submit">Preview</button>
     </div>
   </form>
 
@@ -28,16 +49,19 @@
   <div style="margin-top:16px;">
     {% if preview %}
     <div class="table-scroll">
-    <table><thead><tr><th>Name</th><th>ID</th><th>Class</th><th class="num">Sex</th></tr></thead>
+    <table><thead><tr><th>Name</th><th>Index Number</th><th>Class</th><th class="num">Sex</th></tr></thead>
     <tbody>
       {% for s in preview %}
       <tr><td>{{ s.name }}</td><td class="mono" style="font-size:12px">{{ s.id }}</td><td>Form {{ s.form }} — {{ s.stream }}</td><td class="num">{{ s.sex }}</td></tr>
       {% endfor %}
     </tbody></table>
     </div>
-    <p class="note" style="margin-top:10px;">{{ preview|length }} student(s) ready to register.</p>
+    <p class="note" style="margin-top:10px;">{{ preview|length }} student(s) ready to register into Form {{ batch_form }} — {{ batch_stream }}.</p>
     <form method="POST">
       <input type="hidden" name="rows_text" value="{{ rows_text }}">
+      <input type="hidden" name="batch_form" value="{{ batch_form }}">
+      <input type="hidden" name="batch_stream" value="{{ batch_stream }}">
+      <input type="hidden" name="batch_sex" value="{{ batch_sex }}">
       <input type="hidden" name="action" value="confirm">
       <button class="btn-sm btn-gold" type="submit">Confirm &amp; Register {{ preview|length }} Student(s)</button>
     </form>
@@ -45,7 +69,7 @@
     {% if errors %}
     <div style="margin-top:10px;">
       {% for line, msg in errors %}
-      <p style="font-size:12.5px;color:var(--maroon);">{% if line %}Line {{ line }}: {% endif %}{{ msg }}</p>
+      <p style="font-size:12.5px;color:var(--danger);">{% if line %}Line {{ line }}: {% endif %}{{ msg }}</p>
       {% endfor %}
     </div>
     {% endif %}

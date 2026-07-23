@@ -24,7 +24,11 @@
   {% for s in students %}
   <div class="parent-list-row">
     <div><div class="pname">{{ s.name }}</div><div class="pid">{{ s.id }} · Form {{ s.form }} — {{ s.stream }}</div></div>
-    <a class="btn-sm btn-outline" style="text-decoration:none;" href="{{ url_for('parent_report_pdf', sid=s.id, exam=exam) }}">Download Report</a>
+    <div class="row-actions">
+      <a class="btn-sm btn-outline" style="text-decoration:none;" href="{{ url_for('parent_report_pdf', sid=s.id, exam=exam) }}">Download Report</a>
+      <a class="btn-sm btn-outline" style="text-decoration:none;" href="{{ url_for('full_report_pdf', sid=s.id) }}">Full Term Report</a>
+      <a class="btn-sm btn-outline" style="text-decoration:none;" href="{{ url_for('edit_remarks', sid=s.id) }}">Edit Remarks</a>
+    </div>
   </div>
   {% else %}
   <p style="font-size:13px;color:#6b6b5e">No students in Form {{ form }} yet.</p>

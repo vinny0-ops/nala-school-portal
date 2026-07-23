@@ -38,6 +38,8 @@
         <td class="num mono">{{ '%.1f'|format(r.avg) }}%</td><td class="num"><span class="division-pill">{{ r.division }}</span></td>
         <td class="num"><div class="row-actions">
           <a class="btn-sm btn-outline" style="text-decoration:none;" href="{{ url_for('admin_student_edit', sid=r.student.id) }}">Edit</a>
+          <a class="btn-sm btn-outline" style="text-decoration:none;" href="{{ url_for('full_report_pdf', sid=r.student.id) }}">Full Report</a>
+          <a class="btn-sm btn-outline" style="text-decoration:none;" href="{{ url_for('edit_remarks', sid=r.student.id) }}">Remarks</a>
           <button class="btn-sm btn-outline" type="button" onclick="var f=this.closest('tr').querySelector('.pw-form'); f.style.display = f.style.display==='none'?'inline-block':'none';">Reset PW</button>
           <form method="POST" action="{{ url_for('admin_student_delete', sid=r.student.id) }}" onsubmit="return confirm('Delete {{ r.student.name }}? This removes all their results and fee records permanently.');" style="display:inline;">
             <button class="btn-sm btn-danger" type="submit">Delete</button>

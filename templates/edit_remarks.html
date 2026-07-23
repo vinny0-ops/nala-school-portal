@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Report Remarks — {{ student.name }}{% endblock %}
+{% block tabs %}{% if current_user.role == 'admin' %}{% include "_admin_tabs.html" %}{% endif %}{% endblock %}
+{% block content %}
+<div class="panel-card">
+  <h3>Report Remarks — {{ student.name }} ({{ student.id }})</h3>
+  <p class="note">These appear on {{ student.name }}'s Full Term Report — attendance, behaviour, and sign-off comments. Nothing here affects grades or scores.</p>
+  <form method="POST">
+    <div class="grid-2">
+      <div class="field"><label>Behaviour</label><input type="text" name="behaviour" value="{{ remarks.behaviour }}" placeholder="e.g. Good"></div>
+      <div class="field"><label>Attendance</label><input type="text" name="attendance" value="{{ remarks.attendance }}" placeholder="e.g. 85 out of 90 days"></div>
+      <div class="field"><label>Class Teacher Name</label><input type="text" name="class_teacher_name" value="{{ remarks.class_teacher_name }}" placeholder="e.g. Mr. Daudi Sanga"></div>
+    </div>
+    <div class="field">
+      <label>Class Teacher's Comment</label>
+      <input type="text" name="class_teacher_comment" value="{{ remarks.class_teacher_comment }}" placeholder="e.g. A hard-working student, keep it up">
+    </div>
+    <div class="field">
+      <label>Head of School's Comment</label>
+      <input type="text" name="head_teacher_comment" value="{{ remarks.head_teacher_comment }}" placeholder="e.g. Encouraging progress this term">
+    </div>
+    <button class="btn-sm btn-gold" type="submit">Save Remarks</button>
+  </form>
+</div>
+{% endblock %}

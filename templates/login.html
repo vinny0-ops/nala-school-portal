@@ -44,14 +44,15 @@
           </div>
           <div class="field">
             <label>Password</label>
-            <input type="password" name="password" placeholder="••••••••" autocomplete="off" required>
+            <input type="password" name="password" placeholder="••••••••" autocomplete="off">
           </div>
           <button class="btn" type="submit">Sign In</button>
         </form>
 
         <div class="demo-hint">
           {% if role == 'student' %}
-            Don't have login details? <a href="{{ url_for('self_register', role='student') }}">Register here</a> — your admin will need to approve it.
+            First time signing in? Just enter your index number and leave the password blank — you'll be asked to create one.
+            <br>Don't have login details at all? <a href="{{ url_for('self_register', role='student') }}">Register here</a> — your admin will need to approve it.
           {% elif role == 'teacher' %}
             Don't have login details? <a href="{{ url_for('self_register', role='teacher') }}">Register here</a> — your admin will need to approve it.
           {% endif %}

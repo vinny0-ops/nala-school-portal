@@ -20,7 +20,10 @@
           <p>{{ current_user.role if current_user else '' }}</p>
         </div>
       </div>
-      <a class="logout" href="{{ url_for('logout') }}">Log out</a>
+      <div class="row-actions">
+        <a class="logout" href="{{ url_for('change_password') }}">Change Password</a>
+        <a class="logout" href="{{ url_for('logout') }}">Log out</a>
+      </div>
     </div>
     <div class="sync-strip"><span>Live database</span><span>Shared school data · all devices see the same records</span></div>
 

@@ -44,5 +44,6 @@
 </div>
 <div class="pdf-actions">
   <a class="btn-sm btn-gold" style="text-decoration:none;" href="{{ url_for('student_report_pdf', exam=exam) }}">Download PDF</a>
+  <a class="btn-sm btn-outline" style="text-decoration:none;" href="{{ url_for('full_report_pdf', sid=current_user.id) }}">Download Full Term Report</a>
 </div>
 {% endblock %}

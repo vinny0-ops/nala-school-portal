@@ -5,6 +5,7 @@
 <a class="tab {{ 'active' if request.endpoint=='admin_fees' }}" href="{{ url_for('admin_fees') }}">Fees</a>
 <a class="tab {{ 'active' if request.endpoint in ['admin_students','admin_student_edit'] }}" href="{{ url_for('admin_students') }}">Students</a>
 <a class="tab {{ 'active' if request.endpoint=='admin_register' }}" href="{{ url_for('admin_register') }}">Register Students</a>
+<a class="tab {{ 'active' if request.endpoint=='admin_bulk_marks' }}" href="{{ url_for('admin_bulk_marks') }}">Bulk Upload Marks</a>
 <a class="tab {{ 'active' if request.endpoint=='admin_staff' }}" href="{{ url_for('admin_staff') }}">Manage Staff</a>
 <a class="tab {{ 'active' if request.endpoint=='admin_pending' }}" href="{{ url_for('admin_pending') }}">Pending Approvals{% if pending_count %} ({{ pending_count }}){% endif %}</a>
 <a class="tab {{ 'active' if request.endpoint=='admin_curriculum' }}" href="{{ url_for('admin_curriculum') }}">Curriculum</a>
